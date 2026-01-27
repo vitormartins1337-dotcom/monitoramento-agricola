@@ -2,6 +2,7 @@ import requests
 import os
 import smtplib
 import math
+import csv
 from datetime import datetime
 from email.message import EmailMessage
 
@@ -14,7 +15,7 @@ KC_ATUAL = 0.75
 # CONFIGURAÇÕES DE API E EMAIL
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
-EMAIL_DESTINO = "vitormartins1337@gmail.com"
+EMAIL_DESTINO = "vitormartins@gmail.com"
 CIDADE = "Ibicoara, BR"
 
 def calcular_delta_t_e_vpd(temp, umidade):
@@ -60,7 +61,7 @@ def analisar_expert_educativo(previsoes):
     parecer += f"• Progresso para Safra: {progresso}% concluído.\n"
     parecer += f"💡 EXPLICAÇÃO: As plantas não seguem o calendário humano, mas sim o acúmulo de calor (Energia Térmica). Hoje, a planta absorveu {gda_hoje:.1f} unidades de energia. Quando atingir {GDA_ALVO_COLHEITA} GD, ela completará o ciclo para colheita.\n\n"
     
-    # 4. SUGESTÃO DE FERTILIZAÇÃO MINERAL (NOVO TÓPICO)
+    # 4. SUGESTÃO DE FERTILIZAÇÃO MINERAL
     parecer += f"🛒 SUGESTÃO DE FERTILIZAÇÃO MINERAL:\n"
     if dias_campo < 90:
         parecer += "• FASE: Estabelecimento e Enraizamento.\n"
@@ -119,10 +120,22 @@ def get_agro_data_ultimate():
     corpo += f"\n{analise}"
     return corpo
 
+def registrar_atividade(texto):
+    arquivo = 'caderno_de_campo.csv'
+    cabecalho = ['Data', 'Hora', 'Atividade']
+    existe = os.path.isfile(arquivo)
+    
+    with open(arquivo, 'a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not existe:
+            writer.writerow(cabecalho)
+        writer.writerow([datetime.now().strftime('%d/%m/%Y'), datetime.now().strftime('%H:%M'), texto])
+    print(f"✅ Atividade registrada no Caderno de Campo!")
+
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"🚀 DASHBOARD NUTRICIONAL: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"🚀 DASHBOARD COMPLETO: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -130,6 +143,12 @@ def enviar_email(conteudo):
         smtp.send_message(msg)
 
 if __name__ == "__main__":
+    # 1. Gera e envia o relatório
     relatorio = get_agro_data_ultimate()
     enviar_email(relatorio)
-    print("✅ Sistema Expert com Nutrição Fisiológica Ativado!")
+    print("✅ Relatório enviado com sucesso!")
+
+    # 2. Pergunta sobre atividade do dia (Caderno de Campo)
+    acao = input("\n📝 Deseja registrar alguma atividade/manejo hoje? (Digite ou aperte Enter para pular): ")
+    if acao:
+        registrar_atividade(acao)
