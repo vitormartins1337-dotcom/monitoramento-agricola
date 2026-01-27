@@ -27,47 +27,51 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-def analisar_expert_completo(previsoes):
+def analisar_expert_educativo(previsoes):
     hoje = previsoes[0]
     total_chuva = sum(p['chuva'] for p in previsoes)
-    total_perda = sum(p['et0'] * KC_ATUAL for p in previsoes)
-    balanco = total_chuva - total_perda
+    total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
+    balanco = total_chuva - total_etc
     
-    # --- DASHBOARD ---
+    # 1. DASHBOARD OPERACIONAL
     status_pulv = "🟢 IDEAL" if 2 <= hoje['delta_t'] <= 8 else ("🔴 CRÍTICO" if hoje['delta_t'] > 8 else "🟡 ALERTA")
     status_hidr = "🟢 OK" if -5 < balanco < 5 else ("🔴 DÉFICIT" if balanco < -10 else "🟡 REVISAR")
     
     parecer = f"🚦 DASHBOARD OPERACIONAL:\n"
     parecer += f"• Eficiência de Pulverização (Delta T): {status_pulv}\n"
-    parecer += f"• Balanço de Irrigação Semanal: {status_hidr}\n\n"
+    parecer += f"• Balanço de Irrigação Semanal: {status_hidr}\n"
+    parecer += f"💡 EXPLICAÇÃO: O Delta T indica a vida útil da gota de defensivo. Se estiver fora do ideal (2-8), a gota evapora antes de atingir o alvo ou escorre da folha, causando desperdício de insumos.\n\n"
     
-    # --- SANIDADE E MOLHAMENTO FOLIAR ---
-    parecer += f"🍄 MONITORAMENTO DE SANIDADE (Doenças):\n"
-    # Lógica de Molhamento: UR alta e vento calmo impedem a folha de secar
+    # 2. SANIDADE E DOENÇAS
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88 and p['vento'] < 6)
+    parecer += f"🍄 MONITORAMENTO DE SANIDADE (Doenças):\n"
     parecer += f"• Índice de Molhamento Foliar: {'ALTO' if horas_molhamento > 2 else 'BAIXO'}\n"
-    
-    if horas_molhamento > 2:
-        parecer += "💡 ALERTA: Condições ideais para Orvalho Prolongado. Risco elevado de Botrytis (Mofo Cinzento) e Antracnose. Monitore os frutos maduros.\n\n"
-    else:
-        parecer += "💡 ANÁLISE: Folhagem com boa taxa de secagem. Risco fúngico reduzido para as próximas horas.\n\n"
+    parecer += f"💡 EXPLICAÇÃO: Fungos como a Botrytis precisam de folha molhada para germinar. O índice ALTO indica que a folha demorará a secar devido à alta umidade e falta de vento, criando a 'ponte' para a infecção nas frutas.\n\n"
 
-    # --- FISIOLOGIA ---
+    # 3. FISIOLOGIA
     dias_campo = (datetime.now() - DATA_PLANTIO).days
     gda_total = dias_campo * 14.8 
     progresso = min(round((gda_total / GDA_ALVO_COLHEITA) * 100, 1), 100)
+    gda_hoje = max(hoje['temp'] - T_BASE_BERRIES, 0)
     
-    parecer += f"🧬 DESENVOLVIMENTO FISIOLÓGICO:\n"
-    parecer += f"• Idade: {dias_campo} dias | Progresso de Safra: {progresso}%\n"
-    parecer += f"• Energia Térmica Acumulada: {gda_total:.0f} Graus-Dia.\n\n"
+    parecer += f"🧬 DESENVOLVIMENTO FISIOLÓGICO (Relógio da Planta):\n"
+    parecer += f"• Idade Real: {dias_campo} dias de campo.\n"
+    parecer += f"• Energia Térmica Acumulada: {gda_total:.0f} Graus-Dia.\n"
+    parecer += f"• Progresso para Safra: {progresso}% concluído.\n"
+    parecer += f"💡 EXPLICAÇÃO: As plantas não seguem o calendário humano, mas sim o acúmulo de calor (Energia Térmica). Hoje, a planta absorveu {gda_hoje:.1f} unidades de energia. Quando atingir {GDA_ALVO_COLHEITA} GD, ela completará o ciclo para colheita.\n\n"
     
-    # --- VPD ---
-    parecer += f"🌿 CONFORTO PLANTA (VPD):\n"
+    # 4. VPD
+    parecer += f"🌿 CONFORTO TÉRMICO E TRANSPIRAÇÃO (VPD):\n"
     parecer += f"• Déficit de Pressão de Vapor: {hoje['vpd']} kPa.\n"
     if hoje['vpd'] > 1.3:
-        parecer += "💡 ANÁLISE: VPD Alto. Planta fechando estômatos para evitar desidratação.\n"
+        parecer += "💡 EXPLICAÇÃO: O VPD ALTO indica estresse hídrico atmosférico. A planta fecha os estômatos (poros) para não perder água, o que interrompe a fotossíntese e a absorção de nutrientes como Cálcio e Boro.\n\n"
     else:
-        parecer += "💡 ANÁLISE: Planta em zona de conforto metabólico.\n"
+        parecer += "💡 EXPLICAÇÃO: O VPD está em zona de conforto. Isso significa que a 'bomba' de transpiração está funcionando, puxando água e nutrientes do solo para os frutos com eficiência máxima.\n\n"
+
+    # 5. MANEJO HÍDRICO
+    parecer += f"💧 MANEJO HÍDRICO (Necessidade Real):\n"
+    parecer += f"• Consumo das Berries (ETc) para a semana: {total_etc:.1f} mm.\n"
+    parecer += f"💡 EXPLICAÇÃO: A ETc é a sede real da sua cultura. Se a chuva não atingir esse valor, você deve suprir a diferença via irrigação para evitar que a planta use suas reservas e diminua o tamanho dos frutos.\n"
 
     return parecer
 
@@ -88,8 +92,8 @@ def get_agro_data_ultimate():
             'et0': round(0.0023 * (t + 17.8) * (t ** 0.5) * 0.408, 2)
         })
     
-    analise = analisar_expert_completo(previsoes_diarias)
-    corpo = f"💎 CONSULTORIA AGRO-INTEL ULTIMATE: IBICOARA/BA\n"
+    analise = analisar_expert_educativo(previsoes_diarias)
+    corpo = f"💎 CONSULTORIA AGRO-INTEL PREMIUM: IBICOARA/BA\n"
     corpo += f"📅 Gerado em: {datetime.now().strftime('%d/%m %H:%M')}\n"
     corpo += "------------------------------------------------------------\n"
     corpo += "📈 RESUMO 5 DIAS (TEMPO | CHUVA | CONSUMO PLANTA):\n"
@@ -103,7 +107,7 @@ def get_agro_data_ultimate():
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"🚀 DASHBOARD OPERACIONAL ULTIMATE: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"🚀 DASHBOARD EDUCATIVO: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -113,4 +117,4 @@ def enviar_email(conteudo):
 if __name__ == "__main__":
     relatorio = get_agro_data_ultimate()
     enviar_email(relatorio)
-    print("✅ Sistema Ultimate com Molhamento Foliar Ativado!")
+    print("✅ Sistema Expert com Consultoria Educativa Ativado!")
