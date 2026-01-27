@@ -2,66 +2,61 @@ import requests
 import os
 from datetime import datetime
 
-# Configurações de acesso (puxando das Secrets do GitHub)
+# Configurações Atualizadas
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
-PUSHBULLET_TOKEN = os.getenv("PUSHBULLET_TOKEN")
-CIDADE = "Ibicoara, BR" # Ajuste para sua cidade exata na Chapada
+CIDADE = "Ibicoara, BR" # Sua localização na Bahia
 
-def get_premium_weather():
-    # Chamada para dados atuais e previsão
+def gerar_analise_profissional(temp, umidade, et0, chuva, vento):
+    """Gera uma recomendação técnica personalizada para manejo em Ibicoara."""
+    analise = "🩺 ANÁLISE TÉCNICA DO DIA: "
+    
+    # Lógica de Irrigação
+    if et0 > 5.0 and chuva < 2:
+        analise += "Evapotranspiração alta. Atenção ao estresse hídrico; reforce a irrigação. "
+    elif chuva > 10:
+        analise += "Chuva significativa detectada. Considere suspender a irrigação para evitar lixiviação. "
+    else:
+        analise += "Condições de umidade do solo moderadas. Siga o manejo planejado. "
+        
+    # Lógica de Pulverização (Janela de aplicação)
+    if vento > 15:
+        analise += "\n🚫 Vento forte ({:.1f}km/h). Alto risco de deriva. Não pulverizar!".format(vento)
+    elif vento >= 3 and vento <= 12:
+        analise += "\n✅ Janela ideal para pulverização detectada (Vento estável)."
+    else:
+        analise += "\n⚠️ Ventos muito baixos. Risco de inversão térmica em áreas de baixada."
+        
+    return analise
+
+def get_agro_data():
+    # Busca dados específicos para Ibicoara
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     response = requests.get(url)
     data = response.json()
     
-    if response.status_code != 200:
-        return None
+    if response.status_code != 200: 
+        return "Erro ao acessar dados climáticos. Verifique a chave da API."
 
-    # Dados Atuais (Primeiro bloco da previsão)
-    atual = data['list'][0]
-    temp = atual['main']['temp']
-    umidade = atual['main']['humidity']
-    vento = atual['wind']['speed'] * 3.6 # Converter para km/h
-    desc = atual['weather'][0]['description'].capitalize()
+    # Pega os dados atuais/previsão imediata
+    item = data['list'][0]
+    temp = item['main']['temp']
+    umidade = item['main']['humidity']
+    vento = item['wind']['speed'] * 3.6 # Converte m/s para km/h
+    chuva = sum([i.get('rain', {}).get('3h', 0) for i in data['list'][:8]]) # Próximas 24h
     
-    # Previsão de Chuva (Acumulado das próximas 24h)
-    chuva_prevista = sum([item.get('rain', {}).get('3h', 0) for item in data['list'][:8]])
-    
-    # Cálculo de ET0 (Evapotranspiração de Referência)
+    # Cálculo simplificado de ET0 (Hargreaves-Samani)
     et0 = round(0.0023 * (temp + 17.8) * (temp ** 0.5) * 0.408, 2)
     
-    # --- LÓGICA DE MANEJO AGRONÔMICO ---
-    status_rega = "✅ Irrigação Normal"
-    if et0 > 5.0 and chuva_prevista < 2:
-        status_rega = "⚠️ REFORÇAR REGA (ET0 Alta)"
-    elif chuva_prevista > 10:
-        status_rega = "🌧️ SUSPENDER REGA (Chuva Prevista)"
-
-    status_pulverizacao = "🚀 Ideal para Pulverizar"
-    if vento > 15:
-        status_pulverizacao = "🚫 VENTO FORTE (Risco de Deriva)"
-    elif vento < 3:
-        status_pulverizacao = "⚠️ VENTO BAIXO (Risco de Inversão)"
-
-    # Montagem do Relatório Premium
-    relatorio = (
-        f"📊 RELATÓRIO AGRO: {CIDADE}\n"
-        f"---------------------------\n"
-        f"🌡️ Temp: {temp}°C | 💧 UR: {umidade}%\n"
-        f"🌬️ Vento: {vento:.1f} km/h ({status_pulverizacao})\n"
-        f"🌱 ET0: {et0} mm/dia\n"
-        f"🌧️ Chuva 24h: {chuva_prevista:.1f} mm\n"
-        f"---------------------------\n"
-        f"💡 MANEJO: {status_rega}\n"
-        f"☁️ Céu: {desc}"
-    )
-    return relatorio
-
-def send_push(body):
-    msg = {"type": "note", "title": "💎 MONITORAMENTO PREMIUM", "body": body}
-    headers = {"Access-Token": PUSHBULLET_TOKEN, "Content-Type": "application/json"}
-    requests.post("https://api.pushbullet.com/v2/pushes", json=msg, headers=headers)
+    analise = gerar_analise_profissional(temp, umidade, et0, chuva, vento)
+    
+    return (f"📊 RELATÓRIO AGRO - IBICOARA/BA\n"
+            f"📅 {datetime.now().strftime('%d/%m/%Y')}\n"
+            f"-----------------------------------\n"
+            f"🌡️ Temp: {temp}°C | 💧 UR: {umidade}%\n"
+            f"🌱 ET0: {et0} mm/dia | 🌧️ Chuva: {chuva}mm\n"
+            f"🌬️ Vento: {vento:.1f} km/h\n\n"
+            f"{analise}")
 
 if __name__ == "__main__":
-    relatorio = get_premium_weather()
-    if relatorio:
-        send_push(relatorio)
+    relatorio = get_agro_data()
+    print(relatorio)
