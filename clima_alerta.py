@@ -28,55 +28,78 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-def analisar_expert_educativo(previsoes):
+def ler_atividades_usuario():
+    """Lê as anotações do arquivo de texto e limpa para o próximo dia"""
+    arquivo_input = 'input_atividades.txt'
+    if os.path.exists(arquivo_input):
+        with open(arquivo_input, 'r', encoding='utf-8') as f:
+            conteudo = f.read().strip()
+        if conteudo and conteudo != "Início do caderno de campo":
+            # Limpa o arquivo para o próximo registro
+            with open(arquivo_input, 'w', encoding='utf-8') as f:
+                f.write("")
+            return conteudo
+    return "Nenhum manejo registrado hoje."
+
+def analisar_expert_educativo(previsoes, anotacao_usuario):
     hoje = previsoes[0]
     total_chuva = sum(p['chuva'] for p in previsoes)
     total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
     balanco = total_chuva - total_etc
     
+    # 1. DASHBOARD
     status_pulv = "🟢 IDEAL" if 2 <= hoje['delta_t'] <= 8 else ("🔴 CRÍTICO" if hoje['delta_t'] > 8 else "🟡 ALERTA")
     status_hidr = "🟢 OK" if -5 < balanco < 5 else ("🔴 DÉFICIT" if balanco < -10 else "🟡 REVISAR")
     
     parecer = f"🚦 DASHBOARD OPERACIONAL:\n"
     parecer += f"• Eficiência de Pulverização (Delta T): {status_pulv}\n"
     parecer += f"• Balanço de Irrigação Semanal: {status_hidr}\n"
-    parecer += f"💡 EXPLICAÇÃO: O Delta T indica a vida útil da gota de defensivo. Se estiver fora do ideal (2-8), a gota evapora antes de atingir o alvo ou escorre da folha, causando desperdício de insumos.\n\n"
+    parecer += f"💡 EXPLICAÇÃO: O Delta T indica a vida útil da gota de defensivo. Delta T ideal (2-8) garante que o produto não evapore nem escorra.\n\n"
     
+    # 2. MANEJO REALIZADO (O que você escreveu no TXT)
+    parecer += f"📝 REGISTRO DE MANEJO REALIZADO:\n"
+    parecer += f"• Atividade: {anotacao_usuario}\n"
+    parecer += f"💡 EXPLICAÇÃO: Este dado foi extraído do seu arquivo de entrada. Ele serve para criarmos um histórico real entre o que foi aplicado e a resposta da planta.\n\n"
+
+    # 3. SANIDADE
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88 and p['vento'] < 6)
     parecer += f"🍄 MONITORAMENTO DE SANIDADE (Doenças):\n"
     parecer += f"• Índice de Molhamento Foliar: {'ALTO' if horas_molhamento > 2 else 'BAIXO'}\n"
-    parecer += f"💡 EXPLICAÇÃO: Fungos como a Botrytis precisam de folha molhada para germinar. O índice ALTO indica que a folha demorará a secar devido à alta umidade e falta de vento.\n\n"
+    parecer += f"💡 EXPLICAÇÃO: Fungos precisam de umidade. O índice ALTO indica risco de doenças como Botrytis.\n\n"
 
+    # 4. FISIOLOGIA
     dias_campo = (datetime.now() - DATA_PLANTIO).days
     gda_total = dias_campo * 14.8 
     progresso = min(round((gda_total / GDA_ALVO_COLHEITA) * 100, 1), 100)
     gda_hoje = max(hoje['temp'] - T_BASE_BERRIES, 0)
     
     parecer += f"🧬 DESENVOLVIMENTO FISIOLÓGICO (Relógio da Planta):\n"
-    parecer += f"• Idade Real: {dias_campo} dias de campo.\n"
+    parecer += f"• Idade Real: {dias_campo} dias | Progresso: {progresso}%\n"
     parecer += f"• Energia Térmica Acumulada: {gda_total:.0f} Graus-Dia.\n"
-    parecer += f"• Progresso para Safra: {progresso}% concluído.\n"
-    parecer += f"💡 EXPLICAÇÃO: Hoje a planta absorveu {gda_hoje:.1f} unidades de energia térmica.\n\n"
+    parecer += f"💡 EXPLICAÇÃO: Hoje a planta absorveu {gda_hoje:.1f} unidades de calor úteis para o seu crescimento.\n\n"
     
+    # 5. NUTRIÇÃO
     parecer += f"🛒 SUGESTÃO DE FERTILIZAÇÃO MINERAL:\n"
     if dias_campo < 90:
         parecer += "• FASE: Estabelecimento. FOCO: Fósforo (P) e Cálcio (Ca).\n"
-        parecer += "💡 EXPLICAÇÃO: O Fósforo é o combustível das raízes. Garanta o Cálcio via fertirrigação.\n\n"
     elif dias_campo < 180:
         parecer += "• FASE: Crescimento. FOCO: Nitrogênio (N) e Magnésio (Mg).\n"
     else:
         parecer += "• FASE: Produção. FOCO: Potássio (K) e Boro (B).\n"
+    parecer += "💡 EXPLICAÇÃO: Sugestão baseada na necessidade fisiológica da idade atual da planta.\n\n"
 
-    parecer += f"🌿 CONFORTO TÉRMICO E TRANSPIRAÇÃO (VPD):\n"
+    # 6. VPD
+    parecer += f"🌿 CONFORTO TÉRMICO (VPD):\n"
     parecer += f"• Déficit de Pressão de Vapor: {hoje['vpd']} kPa.\n"
     if hoje['vpd'] > 1.3:
-        parecer += "💡 EXPLICAÇÃO: VPD ALTO. Estresse hídrico atmosférico.\n\n"
+        parecer += "💡 EXPLICAÇÃO: VPD ALTO. A planta pode 'travar' a absorção de nutrientes para se proteger.\n\n"
     else:
-        parecer += "💡 EXPLICAÇÃO: VPD em zona de conforto.\n\n"
+        parecer += "💡 EXPLICAÇÃO: VPD em zona de conforto metabólico.\n\n"
 
+    # 7. MANEJO HÍDRICO
     parecer += f"💧 MANEJO HÍDRICO (Necessidade Real):\n"
     parecer += f"• Consumo das Berries (ETc) para a semana: {total_etc:.1f} mm.\n"
-    parecer += f"💡 EXPLICAÇÃO: A ETc é a sede real da sua cultura.\n"
+    parecer += f"💡 EXPLICAÇÃO: A ETc é a sede real da cultura ajustada pelo Coeficiente da Planta (Kc).\n"
 
     return parecer
 
@@ -97,20 +120,19 @@ def get_agro_data_ultimate():
         })
     return previsoes_diarias
 
-def registrar_log_automatico(previsoes):
-    hoje = previsoes[0]
-    arquivo = 'caderno_de_campo.csv'
+def registrar_log_master(previsoes, anotacao):
+    arquivo = 'caderno_de_campo_master.csv'
     existe = os.path.isfile(arquivo)
     with open(arquivo, 'a', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         if not existe:
-            writer.writerow(['Data', 'Temp_Media', 'VPD', 'Delta_T', 'Chuva_Prevista', 'Status_Monitoramento'])
-        writer.writerow([datetime.now().strftime('%d/%m/%Y'), hoje['temp'], hoje['vpd'], hoje['delta_t'], hoje['chuva'], 'Monitoramento Diario Enviado'])
+            writer.writerow(['Data', 'Temp_Med', 'VPD', 'Delta_T', 'Manejo_Realizado'])
+        writer.writerow([datetime.now().strftime('%d/%m/%Y'), previsoes[0]['temp'], previsoes[0]['vpd'], previsoes[0]['delta_t'], anotacao])
 
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"🚀 DASHBOARD COMPLETO: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"🚀 DASHBOARD NUTRICIONAL E MANEJO: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -119,16 +141,19 @@ def enviar_email(conteudo):
 
 if __name__ == "__main__":
     previsoes = get_agro_data_ultimate()
-    analise = analisar_expert_educativo(previsoes)
+    anotacao = ler_atividades_usuario()
+    analise = analisar_expert_educativo(previsoes, anotacao)
     
     corpo = f"💎 CONSULTORIA AGRO-INTEL PREMIUM: IBICOARA/BA\n📅 Gerado: {datetime.now().strftime('%d/%m %H:%M')}\n"
     corpo += "------------------------------------------------------------\n"
-    corpo += "📈 RESUMO 5 DIAS:\n"
+    corpo += "📈 RESUMO 5 DIAS (TEMPO | CHUVA | CONSUMO PLANTA):\n"
     for p in previsoes:
         etc = round(p['et0'] * KC_ATUAL, 2)
         corpo += f"{p['data']} | {p['temp']}°C | {p['chuva']}mm | Consumo: {etc}mm/dia\n"
     corpo += f"\n{analise}"
     
     enviar_email(corpo)
-    registrar_log_automatico(previsoes)
-    print("✅ Sistema rodou e log foi salvo automaticamente!")
+    registrar_log_master(previsoes, anotacao)
+    print("✅ Sistema rodou e maneio foi registrado!")
+
+
