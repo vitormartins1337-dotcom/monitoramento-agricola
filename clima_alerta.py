@@ -5,9 +5,9 @@ import math
 from datetime import datetime
 from email.message import EmailMessage
 
-# --- CONFIGURAÇÕES DE PLANTIO (AJUSTE SE NECESSÁRIO) ---
-DATA_PLANTIO = datetime(2025, 11, 25) # Final de Novembro
-T_BASE_BERRIES = 10.0 # Temperatura base para crescimento
+# --- CONFIGURAÇÕES DE PLANTIO ---
+DATA_PLANTIO = datetime(2025, 11, 25) 
+T_BASE_BERRIES = 10.0 
 
 # CONFIGURAÇÕES DE API E EMAIL
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
@@ -16,31 +16,8 @@ EMAIL_DESTINO = "vitormartins1337@gmail.com"
 CIDADE = "Ibicoara, BR"
 
 def calcular_gda(temp_media):
-    """Calcula Graus-Dia Acumulados do dia."""
     gda = temp_media - T_BASE_BERRIES
     return max(gda, 0)
-
-def analisar_fisiologia(temp_hoje):
-    dias_campo = (datetime.now() - DATA_PLANTIO).days
-    gda_hoje = calcular_gda(temp_hoje)
-    
-    parecer = f"🧬 ANÁLISE FISIOLÓGICA (Ciclo de Vida):\n"
-    parecer += f"• Idade da Cultura: {dias_campo} dias desde o plantio.\n"
-    
-    if dias_campo < 90:
-        fase = "Estabelecimento Radicular / Crescimento Vegetativo Inicial"
-        dica = "Foco em fósforo e manutenção de umidade constante para expansão de raízes."
-    elif dias_campo < 180:
-        fase = "Desenvolvimento de Ramos e Dossel Foliar"
-        dica = "Atenção ao nitrogênio e controle de pragas foliares."
-    else:
-        fase = "Maturação / Indução Reprodutiva"
-        dica = "Equilíbrio de Potássio e monitoramento de pragas de fruto."
-
-    parecer += f"• Fase Estimada: {fase}\n"
-    parecer += f"• Energia Térmica (GDA de hoje): {gda_hoje:.1f} unidades de calor.\n"
-    parecer += f"💡 CONSULTORIA: {dica}\n\n"
-    return parecer
 
 def calcular_delta_t_e_vpd(temp, umidade):
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
@@ -52,40 +29,47 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-def analisar_premium_fisiologico(previsoes):
+def analisar_premium_explicativo(previsoes):
     hoje = previsoes[0]
     total_chuva = sum(p['chuva'] for p in previsoes)
-    total_et0 = sum(p['et0'] for p in previsoes)
-    balanco = total_chuva - total_et0
+    total_perda = sum(p['et0'] for p in previsoes)
+    balanco = total_chuva - total_perda
     
     # 1. Dashboard Operacional
     status_pulv = "🟢 IDEAL" if 2 <= hoje['delta_t'] <= 8 else ("🟡 ALERTA" if hoje['delta_t'] < 2 else "🔴 CRÍTICO")
-    status_hidr = "🟢 OK" if -5 < balanco < 5 else ("🔴 CRÍTICO" if balanco < -15 else "🟡 REVISAR")
+    status_hidr = "🟢 EQUILIBRADO" if -5 < balanco < 5 else ("🔴 CRÍTICO" if balanco < -15 else "🟡 REVISAR")
     
     parecer = f"🚦 DASHBOARD OPERACIONAL:\n"
-    parecer += f"• Pulverização: {status_pulv} | Irrigação: {status_hidr}\n\n"
+    parecer += f"• Eficiência de Pulverização (Delta T): {status_pulv}\n"
+    parecer += f"• Balanço de Irrigação (Semanal): {status_hidr}\n\n"
     
-    # 2. Fisiologia e Tempo de Campo
-    parecer += analisar_fisiologia(hoje['temp'])
+    # 2. Fisiologia
+    dias_campo = (datetime.now() - DATA_PLANTIO).days
+    gda_hoje = calcular_gda(hoje['temp'])
+    parecer += f"🧬 DESENVOLVIMENTO DA PLANTA (Ciclo Fisiológico):\n"
+    parecer += f"• Idade da Cultura: {dias_campo} dias no campo.\n"
+    parecer += f"• Energia Térmica Diária: {gda_hoje:.1f} Graus-Dia (Calor útil acumulado hoje).\n"
+    parecer += f"• Fase Atual Estimada: Estabelecimento Radicular / Crescimento Vegetativo.\n"
+    parecer += f"💡 CONSULTORIA: Foco em nutrição fosfatada para expansão das raízes das Berries.\n\n"
     
     # 3. Conforto Planta (VPD)
-    parecer += f"🌿 CONFORTO TÉRMICO (VPD):\n"
-    parecer += f"• VPD Atual: {hoje['vpd']} kPa\n"
+    parecer += f"🌿 CONFORTO TÉRMICO E TRANSPIRAÇÃO:\n"
+    parecer += f"• Déficit de Pressão de Vapor (VPD): {hoje['vpd']} kPa\n"
     if 0.45 <= hoje['vpd'] <= 1.25:
-        parecer += "💡 ANÁLISE: Conforto ideal. Planta em plena atividade metabólica.\n"
+        parecer += "💡 ANÁLISE: Conforto ideal. A planta está 'trabalhando' e absorvendo nutrientes com eficiência máxima.\n"
     else:
-        parecer += "💡 ANÁLISE: Estresse detectado. Planta priorizando sobrevivência em vez de crescimento.\n"
+        parecer += "💡 ANÁLISE: Estresse detectado. A planta está fechando os poros (estômatos) para evitar perda excessiva de água.\n"
 
     # 4. Logística de Colheita
     parecer += f"\n🧺 LOGÍSTICA DE COLHEITA:\n"
     if previsoes[1]['chuva'] > 2:
-        parecer += f"⚠️ PREVENÇÃO: Chuva prevista para amanhã. Proteja a qualidade do fruto hoje.\n"
+        parecer += f"⚠️ PREVENÇÃO: Chuva de {previsoes[1]['chuva']}mm prevista para amanhã. Colha os frutos maduros hoje.\n"
     else:
-        parecer += "✅ QUALIDADE: Janela favorável para firmeza e brix.\n"
+        parecer += "✅ QUALIDADE: Janela favorável para firmeza e doçura dos frutos (Brix).\n"
 
     return parecer
 
-def get_agro_data_ultimate():
+def get_agro_data_clear():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     data = requests.get(url).json()
     
@@ -102,14 +86,14 @@ def get_agro_data_ultimate():
             'et0': round(0.0023 * (t + 17.8) * (t ** 0.5) * 0.408, 2)
         })
     
-    analise = analisar_premium_fisiologico(previsoes_diarias)
+    analise = analisar_premium_explicativo(previsoes_diarias)
     corpo = f"💎 INTELIGÊNCIA AGRO-FISIOLÓGICA: IBICOARA/BA\n"
-    corpo += f"📅 {datetime.now().strftime('%d/%m %H:%M')}\n"
-    corpo += "------------------------------------------\n"
-    corpo += "📈 RESUMO DIÁRIO:\n"
-    corpo += "DATA  | TEMP  | CHUVA  | UR% | ET0\n"
+    corpo += f"📅 Relatório gerado em: {datetime.now().strftime('%d/%m %H:%M')}\n"
+    corpo += "------------------------------------------------------------\n"
+    corpo += "📈 RESUMO DIÁRIO (Próximos 5 dias):\n"
+    corpo += "DATA  | TEMP | CHUVA | UMIDADE | PERDA DE ÁGUA (ET0)\n"
     for p in previsoes_diarias:
-        corpo += f"{p['data']} | {p['temp']}°C | {p['chuva']}mm | {p['umidade']}% | {p['et0']}mm\n"
+        corpo += f"{p['data']} | {p['temp']}°C | {p['chuva']}mm | {p['umidade']}% | {p['et0']}mm/dia\n"
     
     corpo += f"\n{analise}"
     return corpo
@@ -121,10 +105,10 @@ def enviar_email(conteudo):
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-        smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
+        smtp.login(EMAIL_DESTINO, os.getenv("GMAIL_PASSWORD"))
         smtp.send_message(msg)
 
 if __name__ == "__main__":
-    relatorio = get_agro_data_ultimate()
+    relatorio = get_agro_data_clear()
     enviar_email(relatorio)
-    print("✅ Sistema Fisiológico Premium Ativado!")
+    print("✅ Sistema com nomenclatura clara ativado!")
