@@ -1,7 +1,7 @@
 name: Alerta Climatico Diario
 on:
   schedule:
-    - cron: '0 11 * * *' # Roda às 11:00 UTC (08:00 Horário de Brasília)
+    - cron: '30 09 * * *' # Roda às 9:30 UTC (06:30 Horário de Brasília)
   workflow_dispatch: # Permite rodar manualmente para testar
 
 jobs:
