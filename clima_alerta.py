@@ -12,58 +12,57 @@ EMAIL_DESTINO = "vitormartins1337@gmail.com"
 CIDADE = "Ibicoara, BR"
 
 def calcular_delta_t_e_vpd(temp, umidade):
-    # Pressão de saturação de vapor (es)
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
-    # Pressão real de vapor (ea)
     ea = es * (umidade / 100)
     vpd = round(es - ea, 2)
-    
-    # Cálculo simplificado de Delta T (Bulbo úmido de Stull)
     tw = temp * math.atan(0.151977 * (umidade + 8.313659)**0.5) + \
          math.atan(temp + umidade) - math.atan(umidade - 1.676331) + \
          0.00391838 * (umidade)**1.5 * math.atan(0.023101 * umidade) - 4.686035
     delta_t = round(temp - tw, 1)
-    
     return delta_t, vpd
 
-def analisar_premium(previsoes):
+def analisar_premium_com_explicacao(previsoes):
     hoje = previsoes[0]
     total_chuva = sum(p['chuva'] for p in previsoes)
+    total_et0 = sum(p['et0'] for p in previsoes)
     
-    # --- 1. SISTEMA DE SEMÁFORO (DASHBOARD VISUAL) ---
+    # --- 1. DASHBOARD ---
     status_pulv = "🟢 IDEAL" if 2 <= hoje['delta_t'] <= 8 else ("🟡 ALERTA" if hoje['delta_t'] < 2 else "🔴 CRÍTICO")
-    status_hidr = "🟢 OK" if -10 < (total_chuva - sum(p['et0'] for p in previsoes)) < 10 else "🟡 REVISAR"
+    status_hidr = "🟢 OK" if -10 < (total_chuva - total_et0) < 10 else "🟡 REVISAR"
     
     parecer = f"🚦 DASHBOARD DE OPERAÇÃO:\n"
-    parecer += f"• Pulverização: {status_pulv} | Irrigação: {status_hidr}\n\n"
+    parecer += f"• Pulverização: {status_pulv} | Irrigação: {status_hidr}\n"
+    parecer += f"📝 NOTA: O status CRÍTICO em pulverização indica que o defensivo vai evaporar antes de agir (Delta T alto) ou escorrer (Delta T baixo).\n\n"
     
-    # --- 2. CONFORTO TÉRMICO (VPD) ---
+    # --- 2. VPD ---
     parecer += f"🌿 CONFORTO DA PLANTA (VPD):\n"
+    parecer += f"• VPD Atual: {hoje['vpd']} kPa\n"
     if 0.45 <= hoje['vpd'] <= 1.25:
-        parecer += f"• VPD: {hoje['vpd']} kPa (Conforto Ideal). A planta está transpirando e absorvendo nutrientes perfeitamente.\n"
+        parecer += "💡 ANÁLISE: Conforto ideal. A planta está com os estômatos abertos, transpirando e absorvendo nutrientes (cálcio/boro) via xilema.\n"
     elif hoje['vpd'] < 0.45:
-        parecer += f"• VPD: {hoje['vpd']} kPa (Muito Baixo). Risco de doenças e baixa absorção de cálcio/boro.\n"
+        parecer += "💡 ANÁLISE: Ambiente muito saturado. A planta não consegue transpirar, o que reduz o transporte de nutrientes e favorece fungos foliares.\n"
     else:
-        parecer += f"• VPD: {hoje['vpd']} kPa (Muito Alto). Estresse hídrico! A planta fechou os estômatos para se proteger.\n"
+        parecer += "💡 ANÁLISE: Estresse Hídrico Atmosférico. A planta fecha os estômatos para economizar água, parando a fotossíntese. Irrigar agora ajuda no resfriamento térmico.\n"
 
-    # --- 3. LOGÍSTICA DE COLHEITA ---
-    parecer += f"\n🧺 LOGÍSTICA DE COLHEITA (Amora/Framboesa/Mirtilo):\n"
+    # --- 3. LOGÍSTICA ---
+    parecer += f"\n🧺 LOGÍSTICA DE COLHEITA (Berries):\n"
     chuva_amanha = previsoes[1]['chuva']
     if chuva_amanha > 2:
-        parecer += f"• ⚠️ ESTRATÉGIA: Chuva de {chuva_amanha}mm prevista para amanhã. Antecipe a colheita dos frutos maduros HOJE para evitar podridão.\n"
+        parecer += f"⚠️ RISCO: Chuva prevista ({chuva_amanha}mm). A umidade no fruto durante a colheita reduz o 'shelf-life' (vida de prateleira) e favorece o mofo cinzento.\n"
     else:
-        parecer += "• ✅ QUALIDADE: Sem previsão de chuva imediata. Frutos manterão boa firmeza pós-colheita.\n"
+        parecer += "✅ QUALIDADE: Janela seca. Ideal para manter a firmeza da casca e brix do fruto.\n"
 
     # --- 4. PLANO SEMANAL ---
-    parecer += f"\n📅 PLANO DE AÇÃO SEMANAL:\n"
+    parecer += f"\n📅 PLANO DE AÇÃO SEMANAL (Tendência):\n"
     melhor_dia = min(previsoes, key=lambda x: x['vento'])
-    parecer += f"• Melhor janela de pulverização: {melhor_dia['data']} (Vento: {melhor_dia['vento']:.1f}km/h).\n"
-    if any(p['umidade'] > 88 for p in previsoes):
-        parecer += "• Alerta: Risco de fungos nas Berries devido à alta umidade prevista na semana."
+    parecer += f"• Operacional: Melhor dia para defensivos é {melhor_dia['data']} devido à estabilidade do vento.\n"
+    parecer += f"• Hídrico: Perda total estimada (ET0) de {total_et0:.1f}mm contra {total_chuva:.1f}mm de chuva. "
+    if total_et0 > total_chuva:
+        parecer += "Planeje o bombeamento para repor o déficit acumulado."
 
     return parecer
 
-def get_agro_data_ultimate():
+def get_agro_data_educational():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     data = requests.get(url).json()
     
@@ -80,8 +79,8 @@ def get_agro_data_ultimate():
             'et0': round(0.0023 * (t + 17.8) * (t ** 0.5) * 0.408, 2)
         })
     
-    analise = analisar_premium(previsoes_diarias)
-    corpo = f"💎 AGRO-INTEL PREMIUM: IBICOARA/BA\n"
+    analise = analisar_premium_com_explicacao(previsoes_diarias)
+    corpo = f"💎 CONSULTORIA AGRO-INTEL: IBICOARA/BA\n"
     corpo += f"📅 Gerado em: {datetime.now().strftime('%d/%m %H:%M')}\n\n"
     corpo += "📈 RESUMO 5 DIAS:\n"
     for p in previsoes_diarias:
@@ -93,7 +92,7 @@ def get_agro_data_ultimate():
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"🚀 DASHBOARD AGRO: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"🚀 DASHBOARD EDUCATIVO: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -101,6 +100,6 @@ def enviar_email(conteudo):
         smtp.send_message(msg)
 
 if __name__ == "__main__":
-    relatorio = get_agro_data_ultimate()
+    relatorio = get_agro_data_educational()
     enviar_email(relatorio)
-    print("✅ Sistema Ultimate com Semáforo, VPD e Logística enviado!")
+    print("✅ Sistema Educativo Enviado!")
