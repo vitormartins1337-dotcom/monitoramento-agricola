@@ -1,26 +1,44 @@
 name: Alerta Climatico Diario
+
 on:
   schedule:
-    - cron: '30 09 * * *' # Roda às 06:30 de Ibicoara (09:30 UTC)
-  workflow_dispatch: # Permite que você teste manualmente agora
+    # Ajustado para rodar todo dia às 09:00 UTC (06:00 horário de Brasília/Ibicoara)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Permite que você rode manualmente quando quiser testar
+
+permissions:
+  contents: write # ESSENCIAL: Dá permissão para o robô salvar o histórico e limpar o TXT
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v2
+    - name: Checkout do código
+      uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
 
-      - name: Instalar dependências
-        run: pip install requests
+    - name: Instalar dependências
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests
 
-      - name: Executar Script
-        env:
-          OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
-          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
-        run: python clima_alerta.py
+    - name: Executar Script Agro-Intel
+      env:
+        OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
+        GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+      run: python clima_alerta.py
+
+    - name: Commit e Push das alterações (Histórico e Log)
+      run: |
+        git config --global user.name "AgroRobot-Ibicoara"
+        git config --global user.email "agro-robot@github.com"
+        # Adiciona os arquivos de histórico e o post-it de atividades
+        git add input_atividades.txt caderno_de_campo_master.csv
+        # Tenta salvar, se não houver mudanças ele apenas ignora
+        git commit -m "📝 Registro Automático de Manejo e Clima" || echo "Sem alterações para salvar"
+        git push
