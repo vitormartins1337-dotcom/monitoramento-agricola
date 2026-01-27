@@ -1,8 +1,8 @@
 name: Alerta Climatico Diario
 on:
   schedule:
-    - cron: '30 09 * * *' # 06:30 em Ibicoara
-  workflow_dispatch:
+    - cron: '30 09 * * *' # Roda às 06:30 de Ibicoara (09:30 UTC)
+  workflow_dispatch: # Permite que você teste manualmente agora
 
 jobs:
   build:
@@ -10,12 +10,15 @@ jobs:
     steps:
       - name: Checkout código
         uses: actions/checkout@v2
+
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: '3.9'
+
       - name: Instalar dependências
         run: pip install requests
+
       - name: Executar Script
         env:
           OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
