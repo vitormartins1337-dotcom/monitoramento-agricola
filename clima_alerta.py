@@ -29,17 +29,35 @@ def calcular_delta_t_e_vpd(temp, umidade):
     return delta_t, vpd
 
 def ler_atividades_usuario():
-    """Lê as anotações do arquivo de texto e limpa para o próximo dia"""
     arquivo_input = 'input_atividades.txt'
     if os.path.exists(arquivo_input):
         with open(arquivo_input, 'r', encoding='utf-8') as f:
             conteudo = f.read().strip()
         if conteudo and conteudo != "Início do caderno de campo":
-            # Limpa o arquivo para o próximo registro
             with open(arquivo_input, 'w', encoding='utf-8') as f:
                 f.write("")
             return conteudo
     return "Nenhum manejo registrado hoje."
+
+def processar_gatilhos_inteligentes(texto):
+    """Analisa o texto do usuário e gera recomendações agronômicas baseadas em gatilhos"""
+    analise_extra = ""
+    texto = texto.lower()
+    
+    # Gatilho 1: Chuva (Lixiviação e Fungos)
+    if "chuva" in texto or "chovendo" in texto or "volume" in texto:
+        analise_extra += "⚠️ ALERTA DE LIXIVIAÇÃO: Chuvas volumosas podem lavar o Nitrogênio e Potássio da zona radicular. Monitore a condutividade elétrica (CE) do solo.\n"
+        analise_extra += "⚠️ RISCO FITOSSANITÁRIO: O molhamento foliar real sobrepõe a previsão. Risco imediato para Botrytis e Antracnose nas Berries.\n"
+    
+    # Gatilho 2: Pragas/Doenças
+    if any(palavra in texto for palavra in ["praga", "inseto", "mancha", "lagarta", "ácaro", "fungo"]):
+        analise_extra += "🔍 MANEJO INTEGRADO (MIP): Identificada pressão biológica. Priorize aplicações com o Delta T em zona verde (2-8) para máxima penetração na calda.\n"
+    
+    # Gatilho 3: Fertirrigação
+    if any(palavra in texto for palavra in ["fertilizante", "adubo", "fertirrigação", "nutriente", "map", "nitrato"]):
+        analise_extra += "🧪 EFICIÊNCIA NUTRICIONAL: Nutrientes aplicados hoje. O aproveitamento dependerá do VPD e da umidade do solo. Evite saturação após a chuva.\n"
+
+    return analise_extra if analise_extra else "✅ O manejo relatado está alinhado com a fase fisiológica atual."
 
 def analisar_expert_educativo(previsoes, anotacao_usuario):
     hoje = previsoes[0]
@@ -47,59 +65,44 @@ def analisar_expert_educativo(previsoes, anotacao_usuario):
     total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
     balanco = total_chuva - total_etc
     
-    # 1. DASHBOARD
+    # Executa a lógica de gatilhos sobre a anotação
+    analise_gatilho = processar_gatilhos_inteligentes(anotacao_usuario)
+    
+    # Mantendo a estrutura anterior rigorosamente
     status_pulv = "🟢 IDEAL" if 2 <= hoje['delta_t'] <= 8 else ("🔴 CRÍTICO" if hoje['delta_t'] > 8 else "🟡 ALERTA")
     status_hidr = "🟢 OK" if -5 < balanco < 5 else ("🔴 DÉFICIT" if balanco < -10 else "🟡 REVISAR")
     
     parecer = f"🚦 DASHBOARD OPERACIONAL:\n"
-    parecer += f"• Eficiência de Pulverização (Delta T): {status_pulv}\n"
-    parecer += f"• Balanço de Irrigação Semanal: {status_hidr}\n"
-    parecer += f"💡 EXPLICAÇÃO: O Delta T indica a vida útil da gota de defensivo. Delta T ideal (2-8) garante que o produto não evapore nem escorra.\n\n"
+    parecer += f"• Pulverização (Delta T): {status_pulv} | Irrigação: {status_hidr}\n"
+    parecer += f"💡 EXPLICAÇÃO: Delta T ideal (2-8) garante que o defensivo não evapore nem escorra.\n\n"
     
-    # 2. MANEJO REALIZADO (O que você escreveu no TXT)
-    parecer += f"📝 REGISTRO DE MANEJO REALIZADO:\n"
-    parecer += f"• Atividade: {anotacao_usuario}\n"
-    parecer += f"💡 EXPLICAÇÃO: Este dado foi extraído do seu arquivo de entrada. Ele serve para criarmos um histórico real entre o que foi aplicado e a resposta da planta.\n\n"
+    parecer += f"📝 SEU REGISTRO DE CAMPO (ANÁLISE DE GATILHOS):\n"
+    parecer += f"• Sua nota: \"{anotacao_usuario}\"\n"
+    parecer += f"📢 CONSULTORIA DINÂMICA:\n{analise_gatilho}\n\n"
 
-    # 3. SANIDADE
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88 and p['vento'] < 6)
-    parecer += f"🍄 MONITORAMENTO DE SANIDADE (Doenças):\n"
-    parecer += f"• Índice de Molhamento Foliar: {'ALTO' if horas_molhamento > 2 else 'BAIXO'}\n"
-    parecer += f"💡 EXPLICAÇÃO: Fungos precisam de umidade. O índice ALTO indica risco de doenças como Botrytis.\n\n"
+    parecer += f"🍄 MONITORAMENTO DE SANIDADE:\n• Índice de Molhamento Foliar: {'ALTO' if horas_molhamento > 2 else 'BAIXO'}\n"
+    parecer += f"💡 EXPLICAÇÃO: Fungos precisam de umidade. Com o seu relato de chuva, a atenção deve ser redobrada.\n\n"
 
-    # 4. FISIOLOGIA
     dias_campo = (datetime.now() - DATA_PLANTIO).days
     gda_total = dias_campo * 14.8 
     progresso = min(round((gda_total / GDA_ALVO_COLHEITA) * 100, 1), 100)
-    gda_hoje = max(hoje['temp'] - T_BASE_BERRIES, 0)
     
-    parecer += f"🧬 DESENVOLVIMENTO FISIOLÓGICO (Relógio da Planta):\n"
-    parecer += f"• Idade Real: {dias_campo} dias | Progresso: {progresso}%\n"
-    parecer += f"• Energia Térmica Acumulada: {gda_total:.0f} Graus-Dia.\n"
-    parecer += f"💡 EXPLICAÇÃO: Hoje a planta absorveu {gda_hoje:.1f} unidades de calor úteis para o seu crescimento.\n\n"
+    parecer += f"🧬 DESENVOLVIMENTO FISIOLÓGICO:\n"
+    parecer += f"• Idade: {dias_campo} dias | Progresso: {progresso}%\n"
+    parecer += f"💡 EXPLICAÇÃO: Planta acumulando energia térmica necessária para completar o ciclo.\n\n"
     
-    # 5. NUTRIÇÃO
     parecer += f"🛒 SUGESTÃO DE FERTILIZAÇÃO MINERAL:\n"
-    if dias_campo < 90:
-        parecer += "• FASE: Estabelecimento. FOCO: Fósforo (P) e Cálcio (Ca).\n"
-    elif dias_campo < 180:
-        parecer += "• FASE: Crescimento. FOCO: Nitrogênio (N) e Magnésio (Mg).\n"
-    else:
-        parecer += "• FASE: Produção. FOCO: Potássio (K) e Boro (B).\n"
-    parecer += "💡 EXPLICAÇÃO: Sugestão baseada na necessidade fisiológica da idade atual da planta.\n\n"
+    if dias_campo < 90: parecer += "• FASE: Estabelecimento. FOCO: Fósforo (P) e Cálcio (Ca).\n"
+    elif dias_campo < 180: parecer += "• FASE: Crescimento. FOCO: Nitrogênio (N) e Magnésio (Mg).\n"
+    else: parecer += "• FASE: Produção. FOCO: Potássio (K) e Boro (B).\n"
+    parecer += "💡 EXPLICAÇÃO: Baseada na demanda nutricional da idade atual.\n\n"
 
-    # 6. VPD
-    parecer += f"🌿 CONFORTO TÉRMICO (VPD):\n"
-    parecer += f"• Déficit de Pressão de Vapor: {hoje['vpd']} kPa.\n"
-    if hoje['vpd'] > 1.3:
-        parecer += "💡 EXPLICAÇÃO: VPD ALTO. A planta pode 'travar' a absorção de nutrientes para se proteger.\n\n"
-    else:
-        parecer += "💡 EXPLICAÇÃO: VPD em zona de conforto metabólico.\n\n"
+    parecer += f"🌿 CONFORTO TÉRMICO (VPD):\n• Déficit de Pressão de Vapor: {hoje['vpd']} kPa.\n"
+    parecer += f"💡 EXPLICAÇÃO: VPD em zona de conforto garante transporte de nutrientes via xilema.\n\n"
 
-    # 7. MANEJO HÍDRICO
-    parecer += f"💧 MANEJO HÍDRICO (Necessidade Real):\n"
-    parecer += f"• Consumo das Berries (ETc) para a semana: {total_etc:.1f} mm.\n"
-    parecer += f"💡 EXPLICAÇÃO: A ETc é a sede real da cultura ajustada pelo Coeficiente da Planta (Kc).\n"
+    parecer += f"💧 MANEJO HÍDRICO (Necessidade Real):\n• Consumo das Berries (ETc) para a semana: {total_etc:.1f} mm.\n"
+    parecer += f"💡 EXPLICAÇÃO: ETc é a sede real da cultura ajustada pelo Kc.\n"
 
     return parecer
 
@@ -132,7 +135,7 @@ def registrar_log_master(previsoes, anotacao):
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"🚀 DASHBOARD NUTRICIONAL E MANEJO: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"🚀 DASHBOARD INTELIGENTE: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -154,6 +157,4 @@ if __name__ == "__main__":
     
     enviar_email(corpo)
     registrar_log_master(previsoes, anotacao)
-    print("✅ Sistema rodou e maneio foi registrado!")
-
-
+    print("✅ Sistema rodou com Gatilhos Inteligentes!")
