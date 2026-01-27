@@ -1,8 +1,8 @@
 name: Alerta Climatico Diario
 on:
   schedule:
-    - cron: '30 09 * * *' # Roda às 9:30 UTC (06:30 Horário de Brasília)
-  workflow_dispatch: # Permite rodar manualmente para testar
+    - cron: '30 09 * * *' # 06:30 em Ibicoara
+  workflow_dispatch:
 
 jobs:
   build:
@@ -19,5 +19,5 @@ jobs:
       - name: Executar Script
         env:
           OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
-          PUSHBULLET_TOKEN: ${{ secrets.PUSHBULLET_TOKEN }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
         run: python clima_alerta.py
