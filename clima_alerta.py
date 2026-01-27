@@ -5,7 +5,7 @@ from datetime import datetime
 # As chaves serão puxadas das "Secrets" do GitHub por segurança
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 PUSHBULLET_TOKEN = os.getenv("PUSHBULLET_TOKEN")
-CIDADE = "Sua Cidade, BR" 
+CIDADE = "Ibicoara, BA" 
 
 def get_weather():
     url = f"https://api.openweathermap.org/data/2.5/weather?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
