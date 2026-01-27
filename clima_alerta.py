@@ -60,7 +60,22 @@ def analisar_expert_educativo(previsoes):
     parecer += f"• Progresso para Safra: {progresso}% concluído.\n"
     parecer += f"💡 EXPLICAÇÃO: As plantas não seguem o calendário humano, mas sim o acúmulo de calor (Energia Térmica). Hoje, a planta absorveu {gda_hoje:.1f} unidades de energia. Quando atingir {GDA_ALVO_COLHEITA} GD, ela completará o ciclo para colheita.\n\n"
     
-    # 4. VPD
+    # 4. SUGESTÃO DE FERTILIZAÇÃO MINERAL (NOVO TÓPICO)
+    parecer += f"🛒 SUGESTÃO DE FERTILIZAÇÃO MINERAL:\n"
+    if dias_campo < 90:
+        parecer += "• FASE: Estabelecimento e Enraizamento.\n"
+        parecer += "• FOCO DO DIA: Fósforo (P) para energia radicular e Cálcio (Ca) para estrutura celular.\n"
+        parecer += "💡 EXPLICAÇÃO: Nesta fase (60-90 dias), a planta está construindo a fundação. O Fósforo é o combustível das raízes. Como o VPD está variável, garanta o Cálcio via fertirrigação, pois ele só se move com a transpiração da planta.\n\n"
+    elif dias_campo < 180:
+        parecer += "• FASE: Crescimento Vegetativo Ativo.\n"
+        parecer += "• FOCO DO DIA: Nitrogênio (N) para biomassa e Magnésio (Mg) para fotossíntese.\n"
+        parecer += "💡 EXPLICAÇÃO: A planta está expandindo folhas. O Magnésio é o coração da clorofila; sem ele, a luz de Ibicoara não se transforma em crescimento.\n\n"
+    else:
+        parecer += "• FASE: Pré-Floração e Frutificação.\n"
+        parecer += "• FOCO DO DIA: Potássio (K) para transporte de açúcares e Boro (B) para o pegamento das flores.\n"
+        parecer += "💡 EXPLICAÇÃO: O foco agora é encher o fruto. O Potássio é o 'caminhão' que leva o açúcar das folhas para as amoras e mirtilos.\n\n"
+
+    # 5. VPD
     parecer += f"🌿 CONFORTO TÉRMICO E TRANSPIRAÇÃO (VPD):\n"
     parecer += f"• Déficit de Pressão de Vapor: {hoje['vpd']} kPa.\n"
     if hoje['vpd'] > 1.3:
@@ -68,7 +83,7 @@ def analisar_expert_educativo(previsoes):
     else:
         parecer += "💡 EXPLICAÇÃO: O VPD está em zona de conforto. Isso significa que a 'bomba' de transpiração está funcionando, puxando água e nutrientes do solo para os frutos com eficiência máxima.\n\n"
 
-    # 5. MANEJO HÍDRICO
+    # 6. MANEJO HÍDRICO
     parecer += f"💧 MANEJO HÍDRICO (Necessidade Real):\n"
     parecer += f"• Consumo das Berries (ETc) para a semana: {total_etc:.1f} mm.\n"
     parecer += f"💡 EXPLICAÇÃO: A ETc é a sede real da sua cultura. Se a chuva não atingir esse valor, você deve suprir a diferença via irrigação para evitar que a planta use suas reservas e diminua o tamanho dos frutos.\n"
@@ -107,7 +122,7 @@ def get_agro_data_ultimate():
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"🚀 DASHBOARD EDUCATIVO: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"🚀 DASHBOARD NUTRICIONAL: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -117,4 +132,4 @@ def enviar_email(conteudo):
 if __name__ == "__main__":
     relatorio = get_agro_data_ultimate()
     enviar_email(relatorio)
-    print("✅ Sistema Expert com Consultoria Educativa Ativado!")
+    print("✅ Sistema Expert com Nutrição Fisiológica Ativado!")
