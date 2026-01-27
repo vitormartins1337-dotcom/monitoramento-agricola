@@ -5,7 +5,7 @@ from datetime import datetime
 # Configurações de acesso (puxando das Secrets do GitHub)
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 PUSHBULLET_TOKEN = os.getenv("PUSHBULLET_TOKEN")
-CIDADE = "Mucuge, BR" # Ajuste para sua cidade exata na Chapada
+CIDADE = "Ibicoara, BR" # Ajuste para sua cidade exata na Chapada
 
 def get_premium_weather():
     # Chamada para dados atuais e previsão
