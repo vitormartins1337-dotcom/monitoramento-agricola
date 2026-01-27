@@ -8,8 +8,8 @@ from email.message import EmailMessage
 # --- CONFIGURAÇÕES DE CAMPO ---
 DATA_PLANTIO = datetime(2025, 11, 25) 
 T_BASE_BERRIES = 10.0 
-GDA_ALVO_COLHEITA = 1200  # Estimativa de calor acumulado para início de safra
-KC_ATUAL = 0.75          # Coeficiente da cultura para Berries aos 60-90 dias
+GDA_ALVO_COLHEITA = 1200  # Meta de calor para início de safra
+KC_ATUAL = 0.75          # Coeficiente de consumo de água da planta
 
 # CONFIGURAÇÕES DE API E EMAIL
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
@@ -27,56 +27,54 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-def analisar_expert_ultimate(previsoes):
+def analisar_expert_educativo(previsoes):
     hoje = previsoes[0]
     total_chuva = sum(p['chuva'] for p in previsoes)
     total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
     balanco = total_chuva - total_etc
     
     dias_campo = (datetime.now() - DATA_PLANTIO).days
-    gda_estimado_total = dias_campo * 14.5 # Média histórica aproximada
-    progresso_safra = min(round((gda_estimado_total / GDA_ALVO_COLHEITA) * 100, 1), 100)
+    gda_hoje = max(hoje['temp'] - T_BASE_BERRIES, 0)
+    # Estimativa acumulada (ajustada para o clima de Ibicoara)
+    gda_total = dias_campo * 14.8 
+    progresso = min(round((gda_total / GDA_ALVO_COLHEITA) * 100, 1), 100)
 
-    # 1. Dashboard de Operação
+    # 1. Dashboard
     status_pulv = "🟢 IDEAL" if 2 <= hoje['delta_t'] <= 8 else ("🔴 CRÍTICO" if hoje['delta_t'] > 8 else "🟡 ALERTA")
     status_hidr = "🟢 OK" if -5 < balanco < 5 else ("🔴 DÉFICIT" if balanco < -10 else "🟡 REVISAR")
     
     parecer = f"🚦 DASHBOARD OPERACIONAL:\n"
-    parecer += f"• Pulverização (Delta T): {status_pulv} | Balanço Hídrico: {status_hidr}\n\n"
+    parecer += f"• Eficiência de Pulverização (Delta T): {status_pulv}\n"
+    parecer += f"• Balanço de Irrigação Semanal: {status_hidr}\n\n"
     
-    # 2. Fisiologia e Previsão de Safra
-    parecer += f"🧬 DESENVOLVIMENTO E SAFRA:\n"
-    parecer += f"• Idade da Cultura: {dias_campo} dias.\n"
-    parecer += f"• Progresso Fisiológico: {progresso_safra}% para maturação.\n"
-    parecer += f"• Energia Térmica Acumulada: ~{gda_estimado_total:.0f} Graus-Dia.\n"
-    parecer += f"💡 CONSULTORIA: Fase de expansão vegetativa intensa. Mantenha o equilíbrio de Cálcio e Boro.\n\n"
+    # 2. Fisiologia Explicada
+    parecer += f"🧬 DESENVOLVIMENTO FISIOLÓGICO (Relógio da Planta):\n"
+    parecer += f"• Idade Real: {dias_campo} dias de campo.\n"
+    parecer += f"• Energia Térmica Acumulada (Graus-Dia): {gda_total:.0f} GD.\n"
+    parecer += f"• Progresso para Safra: {progresso}% concluído.\n"
+    parecer += f"💡 EXPLICAÇÃO: As plantas não seguem o calendário humano, mas sim o acúmulo de calor (Energia Térmica). "
+    parecer += f"Hoje, a planta absorveu {gda_hoje:.1f} unidades de energia. Quando atingir 1200 GD, ela completará o ciclo para colheita.\n\n"
     
-    # 3. Sanidade e Doenças (Molhamento Foliar)
-    parecer += f"🍄 ALERTA DE SANIDADE (Berries):\n"
-    if hoje['umidade'] > 90 and hoje['vento'] < 5:
-        parecer += "• ⚠️ RISCO ALTO: Condição ideal para ORVALHO PROLONGADO (Folha Molhada). Risco de Botrytis.\n"
-    else:
-        parecer += "• ✅ BAIXO RISCO: Sem previsão de molhamento foliar crítico hoje.\n"
-        
-    # 4. Manejo Hídrico de Precisão
-    parecer += f"\n💧 MANEJO HÍDRICO (Necessidade Real):\n"
-    parecer += f"• Perda da Planta (ETc) prevista para a semana: {total_etc:.1f} mm.\n"
-    if balanco < 0:
-        parecer += f"• ⚠️ REPOSIÇÃO: É necessário irrigar o equivalente a {abs(balanco):.1f} mm para zerar o déficit.\n"
-    else:
-        parecer += f"• ✅ RESERVA: Solo com excedente hídrico de {balanco:.1f} mm.\n"
-
-    # 5. Conforto Planta (VPD)
-    parecer += f"\n🌿 CONFORTO TÉRMICO (VPD):\n"
-    parecer += f"• Déficit de Pressão de Vapor: {hoje['vpd']} kPa.\n"
+    # 3. VPD Explicado
+    parecer += f"🌿 CONFORTO TÉRMICO E TRANSPIRAÇÃO (VPD):\n"
+    parecer += f"• VPD Atual: {hoje['vpd']} kPa.\n"
     if hoje['vpd'] > 1.3:
-        parecer += "💡 ANÁLISE: Estresse hídrico atmosférico. Planta fechando estômatos.\n"
+        parecer += "💡 ANÁLISE: VPD ALTO. O ar está 'sequestrando' água da planta muito rápido. "
+        parecer += "Para não desidratar, ela fecha os poros (estômatos). Isso interrompe a fotossíntese e a absorção de nutrientes.\n"
+    elif hoje['vpd'] < 0.4:
+        parecer += "💡 ANÁLISE: VPD BAIXO. O ar está muito úmido. A planta não consegue transpirar, o que para a 'bomba' que puxa Cálcio e Boro das raízes.\n"
     else:
-        parecer += "💡 ANÁLISE: Conforto ideal para fotossíntese.\n"
+        parecer += "💡 ANÁLISE: CONFORTO IDEAL. A planta está em plena atividade, respirando e se nutrindo perfeitamente.\n"
+
+    # 4. Manejo Hídrico
+    parecer += f"\n💧 MANEJO HÍDRICO (Necessidade Real das Berries):\n"
+    parecer += f"• Perda da Planta (ETc) nos próximos 5 dias: {total_etc:.1f} mm.\n"
+    parecer += f"• Balanço Final: {'Déficit de' if balanco < 0 else 'Superávit de'} {abs(balanco):.1f} mm.\n"
+    parecer += f"💡 EXPLICAÇÃO: A ETc é a 'sede' real da sua planta. O status {status_hidr} indica se a chuva será suficiente ou se você precisa completar via irrigação.\n"
 
     return parecer
 
-def get_agro_data_ultimate():
+def get_agro_data_final():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     data = requests.get(url).json()
     
@@ -88,19 +86,18 @@ def get_agro_data_ultimate():
         previsoes_diarias.append({
             'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'),
             'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt,
-            'vento': item['wind']['speed'] * 3.6,
             'chuva': round(sum([p.get('rain', {}).get('3h', 0) for p in data['list'][i:i+8]]), 1),
             'et0': round(0.0023 * (t + 17.8) * (t ** 0.5) * 0.408, 2)
         })
     
-    analise = analisar_expert_ultimate(previsoes_diarias)
-    corpo = f"💎 INTELIGÊNCIA AGRO-FISIOLÓGICA ULTIMATE: IBICOARA/BA\n"
-    corpo += f"📅 Gerado: {datetime.now().strftime('%d/%m %H:%M')}\n"
+    analise = analisar_expert_educativo(previsoes_diarias)
+    corpo = f"💎 CONSULTORIA AGRO-DIGITAL: IBICOARA/BA\n"
+    corpo += f"📅 Gerado em: {datetime.now().strftime('%d/%m %H:%M')}\n"
     corpo += "------------------------------------------------------------\n"
-    corpo += "📈 RESUMO 5 DIAS (TEMPO | CHUVA | PERDA DA PLANTA):\n"
+    corpo += "📈 RESUMO 5 DIAS (TEMPO | CHUVA | CONSUMO DA PLANTA):\n"
     for p in previsoes_diarias:
-        etc_dia = round(p['et0'] * KC_ATUAL, 2)
-        corpo += f"{p['data']} | {p['temp']}°C | {p['chuva']}mm | ETc: {etc_dia}mm/dia\n"
+        etc = round(p['et0'] * KC_ATUAL, 2)
+        corpo += f"{p['data']} | {p['temp']}°C | {p['chuva']}mm | Consumo: {etc}mm/dia\n"
     
     corpo += f"\n{analise}"
     return corpo
@@ -108,7 +105,7 @@ def get_agro_data_ultimate():
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"🚀 DASHBOARD OPERACIONAL ULTIMATE: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"🚀 DASHBOARD FISIOLÓGICO: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -116,6 +113,6 @@ def enviar_email(conteudo):
         smtp.send_message(msg)
 
 if __name__ == "__main__":
-    relatorio = get_agro_data_ultimate()
+    relatorio = get_agro_data_final()
     enviar_email(relatorio)
-    print("✅ Sistema Ultimate com Manejo Hídrico e Safra Ativado!")
+    print("✅ Sistema Educativo de Precisão Ativado!")
