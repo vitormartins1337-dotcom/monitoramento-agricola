@@ -17,37 +17,37 @@ def calcular_delta_t(temp, umidade):
          0.00391838 * (umidade)**1.5 * math.atan(0.023101 * umidade) - 4.686035
     return round(temp - tw, 1)
 
-def analisar_berries(previsoes):
-    """Análise específica para Amora, Framboesa e Mirtilo."""
-    hoje = previsoes[0]
-    total_chuva_semana = sum(p['chuva'] for p in previsoes)
-    delta_t = calcular_delta_t(hoje['temp'], hoje['umidade'])
+def analisar_plano_semanal(previsoes):
+    total_chuva = sum(p['chuva'] for p in previsoes)
+    total_et0 = sum(p['et0'] for p in previsoes)
+    balanco = total_chuva - total_et0
     
-    parecer = f"🍓 ESTRATÉGIA PARA FRUTAS VERMELHAS (Berries):\n"
+    parecer = f"📋 PLANO DE AÇÃO SEMANAL (Tendência 5 Dias):\n"
     
-    # 1. Alerta de Doenças (Botrytis e Antracnose)
+    # 1. Manejo Hídrico Estratégico
+    if balanco > 10:
+        parecer += f"• 🌧️ ALERTA: Chuva acumulada alta ({total_chuva:.1f}mm). Risco de encharcamento e lixiviação. Reduza a fertirrigação.\n"
+    elif balanco < -15:
+        parecer += f"• ⚠️ DÉFICIT: Solo perderá {abs(balanco):.1f}mm a mais do que receberá. Reforce o turno de rega dos mirtilos.\n"
+    else:
+        parecer += f"• ✅ BALANÇO: Chuva ({total_chuva:.1f}mm) vs Perda ({total_et0:.1f}mm) equilibrados.\n"
+        
+    # 2. Janela de Operação (Pulverização)
+    melhor_dia = min(previsoes, key=lambda x: x['vento'])
+    parecer += f"• 🌬️ PULVERIZAÇÃO: Melhor janela para {melhor_dia['data']} (Vento: {melhor_dia['vento']:.1f}km/h | Delta T: {melhor_dia['delta_t']}).\n"
+    
+    # 3. Sanidade de Frutas (Amora, Framboesa, Mirtilo)
     risco_fungo = any(p['umidade'] > 85 and 15 <= p['temp'] <= 24 for p in previsoes)
     if risco_fungo:
-        parecer += "• 🍄 RISCO ALTO DE MOFO CINZENTO/ANTRACNOSE: Clima úmido e ameno detectado. Reforce o preventivo em Amoras e Framboesas.\n"
+        parecer += "• 🍄 FITOSSANIDADE: Alta probabilidade de molhamento foliar prolongado. Risco de Botrytis nas Berries.\n"
     
-    # 2. Manejo de Irrigação para Mirtilo (Sensível a estresse)
-    if total_chuva_semana < 5 and hoje['et0'] > 4.8:
-        parecer += "• 💧 ALERTA MIRTILO: Baixa umidade e ET0 alta. Mirtilos têm raízes superficiais; não deixe o solo secar hoje.\n"
+    # 4. Qualidade de Colheita
+    if any(p['chuva'] > 5 for p in previsoes):
+        parecer += "• 🧺 COLHEITA: Evite colher amoras/framboesas nos dias chuvosos para evitar perdas pós-colheita."
 
-    # 3. Qualidade do Fruto (Radiação/Calor)
-    if hoje['temp'] > 28 and hoje['umidade'] < 40:
-        parecer += "• ☀️ QUALIDADE: Risco de escaldadura nos frutos. Considere o uso de telas se disponível.\n"
-
-    # 4. Pulverização (Delta T)
-    parecer += f"• 🌬️ PULVERIZAÇÃO: Delta T atual em {delta_t}. "
-    if 2 <= delta_t <= 8:
-        parecer += "Ideal para aplicação.\n"
-    else:
-        parecer += "Evite aplicação (Risco de baixa eficiência).\n"
-        
     return parecer
 
-def get_agro_data_berries():
+def get_agro_data_completo():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     data = requests.get(url).json()
     
@@ -55,29 +55,32 @@ def get_agro_data_berries():
     for i in range(0, 40, 8):
         item = data['list'][i]
         temp = item['main']['temp']
+        umidade = item['main']['humidity']
         previsoes_diarias.append({
             'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'),
             'temp': temp,
-            'umidade': item['main']['humidity'],
+            'umidade': umidade,
+            'vento': item['wind']['speed'] * 3.6,
             'chuva': sum([p.get('rain', {}).get('3h', 0) for p in data['list'][i:i+8]]),
-            'et0': round(0.0023 * (temp + 17.8) * (temp ** 0.5) * 0.408, 2)
+            'et0': round(0.0023 * (temp + 17.8) * (temp ** 0.5) * 0.408, 2),
+            'delta_t': calcular_delta_t(temp, umidade)
         })
     
-    analise = analisar_berries(previsoes_diarias)
+    plano_acao = analisar_plano_semanal(previsoes_diarias)
     
-    corpo = f"📊 CONSULTORIA PREMIUM: FRUTAS VERMELHAS - IBICOARA\n"
-    corpo += f"📅 Gerado: {datetime.now().strftime('%d/%m %H:%M')}\n\n"
+    corpo = f"📊 CONSULTORIA AGRO PREMIUM - IBICOARA/BA\n"
+    corpo += f"📅 Gerado em: {datetime.now().strftime('%d/%m %H:%M')}\n\n"
     corpo += "📈 TENDÊNCIA 5 DIAS:\n"
     for p in previsoes_diarias:
         corpo += f"{p['data']}: {p['temp']}°C | Chuva: {p['chuva']:.1f}mm | UR: {p['umidade']}%\n"
     
-    corpo += f"\n{analise}"
+    corpo += f"\n{plano_acao}"
     return corpo
 
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"💎 CONSULTORIA BERRIES: {datetime.now().strftime('%d/%m')}"
+    msg['Subject'] = f"💎 PLANO DE AÇÃO AGRO: {datetime.now().strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
@@ -85,6 +88,6 @@ def enviar_email(conteudo):
         smtp.send_message(msg)
 
 if __name__ == "__main__":
-    relatorio = get_agro_data_berries()
+    relatorio = get_agro_data_completo()
     enviar_email(relatorio)
-    print("✅ Relatório especializado em Berries enviado!")
+    print("✅ Sistema Premium atualizado e enviado!")
