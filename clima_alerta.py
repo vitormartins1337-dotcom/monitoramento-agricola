@@ -8,37 +8,47 @@ import google.generativeai as genai
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
-# --- 1. CONFIGURAÇÕES E FUSO HORÁRIO ---
+# --- 1. CONFIGURAÇÕES ---
 DATA_PLANTIO = datetime(2025, 11, 25) 
-T_BASE_BERRIES = 10.0 
-GDA_ALVO_COLHEITA = 1200 
 KC_ATUAL = 0.75
 FUSO_BRASIL = timezone(timedelta(hours=-3))
 CIDADE = "Ibicoara, BR"
 
-# Segredos (Verifique se estão corretos no GitHub Secrets)
+# Segredos
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 
-# Configuração da IA (Modo Seguro - Sem Ferramentas Externas)
+# Configuração IA (Usando versão estável 1.5-flash)
+MODELO_IA = None
 if GEMINI_KEY:
     try:
         genai.configure(api_key=GEMINI_KEY)
-        model = genai.GenerativeModel('gemini-2.0-flash')
-    except Exception as e:
-        print(f"Erro ao configurar IA: {e}")
-        model = None
+        MODELO_IA = genai.GenerativeModel('gemini-1.5-flash')
+    except:
+        print("Erro ao configurar IA.")
 
-# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (FIXO) ---
-FRASES_VPD = {
-    'alto': "⚠️ **ANÁLISE FÍSICA (VPD ALTO):** A atmosfera está drenando água excessivamente. Para evitar cavitação no xilema, a planta fechou os estômatos. Consequência: Interrupção imediata da fotossíntese e travamento da absorção de Cálcio (risco de Tip Burn).",
-    'baixo': "⚠️ **ANÁLISE FÍSICA (VPD BAIXO):** O ar saturado desligou a 'bomba hidráulica' da planta. Sem transpiração, não há fluxo de massa, ou seja, os nutrientes do solo não sobem para as folhas. Risco elevado de gutação e doenças.",
-    'ideal': "✅ **ANÁLISE FÍSICA (VPD IDEAL):** Termodinâmica perfeita. A planta opera com máxima condutância estomática, transpirando e fixando carbono simultaneamente. É o momento de maior eficiência no uso da água e fertilizantes."
-}
+# --- 2. MOTOR DE BACKUP (GATILHOS CLÁSSICOS) ---
+# Se a IA falhar, usamos isso aqui para não ficar "fraco"
+def backup_inteligencia_classica(texto):
+    texto = texto.lower()
+    analise = "⚠️ **ANÁLISE DE BACKUP (IA OFFLINE):**\n"
+    
+    if any(p in texto for p in ["chuva", "água", "molhou"]):
+        analise += "• Você relatou chuva não prevista. Isso anula o dado do sensor. Risco Imediato: Lixiviação de Nitrogênio/Potássio e Anoxia (falta de ar na raiz).\n"
+    
+    if any(p in texto for p in ["adubo", "fertirrigação", "cálcio"]):
+        analise += "• Sobre a nutrição: Se choveu muito após a aplicação, considere que parte foi perdida (lavada). Monitore sinais de deficiência nos próximos 3 dias.\n"
+        
+    if "não" in texto and "fertirrigação" in texto:
+        analise += "• Decisão correta de suspender a fertirrigação. Com o solo encharcado, a planta não absorveria e apenas salinizaria o solo.\n"
 
-# --- 3. CÁLCULOS FÍSICOS ---
+    if analise == "⚠️ **ANÁLISE DE BACKUP (IA OFFLINE):**\n":
+        return "Operação nominal. Acompanhe o VPD."
+    return analise
+
+# --- 3. CÁLCULOS ---
 def calcular_delta_t_e_vpd(temp, umidade):
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
     ea = es * (umidade / 100)
@@ -49,7 +59,7 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-# --- 4. LEITURA E INTELIGÊNCIA ---
+# --- 4. LEITURA ---
 def ler_atividades_usuario():
     arquivo_input = 'input_atividades.txt'
     if os.path.exists(arquivo_input):
@@ -60,97 +70,81 @@ def ler_atividades_usuario():
             return conteudo
     return "Nenhum manejo registrado hoje."
 
+# --- 5. INTELIGÊNCIA HÍBRIDA ---
 def consultar_ia_agronomica(previsoes, anotacao_usuario, dias_campo):
-    """Gera o parecer técnico usando a lógica da IA (Sem busca Google para evitar erro)."""
     hoje = previsoes[0]
     
-    # Prompt Blindado
+    # Prompt agressivo para confiar no usuário
     prompt = f"""
-    Aja como um Engenheiro Agrônomo Sênior especialista em Frutas Vermelhas na Chapada Diamantina.
-    Analise os dados abaixo e forneça um parecer técnico de um parágrafo.
+    Você é um Engenheiro Agrônomo Sênior.
     
-    DADOS TÉCNICOS:
-    - VPD: {hoje['vpd']} kPa
-    - Delta T: {hoje['delta_t']}°C
-    - Chuva Prevista: {hoje['chuva']}mm
-    - Idade da Planta: {dias_campo} dias
+    CONFLITO DE DADOS (IMPORTANTE):
+    - O sensor diz: Chuva {hoje['chuva']}mm.
+    - O produtor diz: "{anotacao_usuario}"
     
-    NOTA DO PRODUTOR: "{anotacao_usuario}"
+    ORDEM: Se o produtor disse que choveu, IGNORE o sensor e considere CHUVA FORTE.
     
-    DIRETRIZES:
-    1. Cruze a nota do produtor com o VPD/Chuva.
-    2. Se não houver nota, dê uma recomendação de manejo baseada no VPD atual.
-    3. Seja formal, técnico e não mencione que você é uma IA.
+    TAREFA:
+    Analise a situação. Se choveu e ele não fertirrigou, parabenize a decisão técnica (evitou lixiviação).
+    Se ele aplicou algo e choveu, avise do prejuízo.
+    Explique tecnicamente (lixiviação, anoxia, VPD).
+    Seja curto e direto.
     """
     
     try:
-        if not GEMINI_KEY or not model: return "Operação nominal (IA Offline). Siga o manejo padrão."
-        resposta = model.generate_content(prompt)
+        if not MODELO_IA: raise Exception("IA não configurada")
+        resposta = MODELO_IA.generate_content(prompt)
         return resposta.text
     except Exception as e:
-        print(f"Erro na geração da IA: {e}")
-        return "Operação nominal. Siga o manejo preventivo padrão baseado nos indicadores climáticos."
+        print(f"⚠️ FALHA NA IA: {e} -> Usando Backup Clássico.")
+        # AQUI ESTÁ A CORREÇÃO: Chama o backup inteligente em vez da frase vazia
+        return backup_inteligencia_classica(anotacao_usuario)
 
-# --- 5. GERAÇÃO DO RELATÓRIO PROFISSIONAL ---
+# --- 6. RELATÓRIO ---
 def analisar_expert_educativo(previsoes, anotacao_usuario):
     hoje = previsoes[0]
     total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
     dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
     
-    # Chama a IA
     parecer_dinamico = consultar_ia_agronomica(previsoes, anotacao_usuario, dias_campo)
     
-    # Lógica Científica Fixa
-    if hoje['vpd'] > 1.3: txt_vpd = FRASES_VPD['alto']
-    elif hoje['vpd'] < 0.4: txt_vpd = FRASES_VPD['baixo']
-    else: txt_vpd = FRASES_VPD['ideal']
+    # Frases VPD Fixas
+    if hoje['vpd'] > 1.3: txt_vpd = "⚠️ **ANÁLISE FÍSICA (VPD ALTO):** Ar seco. Fechamento estomático. Risco de Tip Burn (falta de Ca)."
+    elif hoje['vpd'] < 0.4: txt_vpd = "⚠️ **ANÁLISE FÍSICA (VPD BAIXO):** Ar saturado. Planta não transpira. Nutriente não sobe. Risco de doenças."
+    else: txt_vpd = "✅ **ANÁLISE FÍSICA (VPD IDEAL):** Máxima eficiência fotossintética e nutricional."
 
     gda_total = dias_campo * 14.8 
-    gda_hoje = max(hoje['temp'] - T_BASE_BERRIES, 0)
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88 and p['vento'] < 6)
     risco_sanidade = 'ALTO' if horas_molhamento > 2 else 'BAIXO'
 
-    # --- MONTAGEM DO E-MAIL ---
     parecer = f"🚦 **DASHBOARD OPERACIONAL:**\n"
-    parecer += f"• Delta T (Aplicação): {hoje['delta_t']}°C | VPD (Transpiração): {hoje['vpd']} kPa\n"
+    parecer += f"• Delta T: {hoje['delta_t']}°C | VPD: {hoje['vpd']} kPa\n"
     parecer += f"{txt_vpd}\n\n"
     
     parecer += f"📝 **REGISTRO DE CAMPO & ANÁLISE:**\n"
-    parecer += f"• Seu Relato: \"{anotacao_usuario}\"\n"
-    parecer += f"👨‍🔬 **PARECER TÉCNICO DO ENGENHEIRO:**\n{parecer_dinamico}\n\n"
+    parecer += f"• Relato: \"{anotacao_usuario}\"\n"
+    parecer += f"👨‍🔬 **PARECER TÉCNICO:**\n{parecer_dinamico}\n\n"
     
-    parecer += f"🍄 **MONITORAMENTO FITOSSANITÁRIO:**\n"
-    parecer += f"• Risco Fúngico: {risco_sanidade} ({horas_molhamento} janelas de orvalho previstas)\n"
-    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de água livre. O monitoramento de molhamento foliar é mais crítico que a chuva total, pois define o tempo de infecção.\n\n"
+    parecer += f"🍄 **SANIDADE (Risco {risco_sanidade}):**\n"
+    parecer += f"• {horas_molhamento} janelas de orvalho previstas. Esporos de *Botrytis* precisam de água livre.\n\n"
 
-    parecer += f"🧬 **FISIOLOGIA (Relógio Térmico):**\n"
-    parecer += f"• Idade Real: {dias_campo} dias | GDA Acumulado: {gda_total:.0f} (+{gda_hoje:.1f} hoje)\n"
-    parecer += f"💡 **FUNDAMENTAÇÃO:** Fenologia baseada em Soma Térmica. Estamos monitorando a eficiência enzimática da planta em converter radiação e temperatura em biomassa produtiva.\n\n"
-
-    parecer += f"🛒 **SUGESTÃO DE NUTRIÇÃO MINERAL:**\n"
-    if dias_campo < 90:
-        parecer += "• FASE: Estabelecimento Radicular.\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n💡 **CIÊNCIA DO SOLO:** O Fósforo é o gerador de ATP (energia celular) vital para o enraizamento. O Cálcio forma os pectatos da lamela média, a 'cola' que dá firmeza às células e resistência a patógenos."
-    elif dias_campo < 180:
-        parecer += "• FASE: Crescimento Vegetativo.\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n💡 **CIÊNCIA DO SOLO:** O Nitrogênio é o bloco construtor de aminoácidos e proteínas. O Magnésio é o átomo central da molécula de clorofila."
-    else:
-        parecer += "• FASE: Enchimento e Maturação.\n• FOCO: **Potássio (K)** e **Boro (B)**.\n💡 **CIÊNCIA DO SOLO:** O Potássio atua como regulador osmótico e transportador de fotoassimilados. O Boro é crucial para a viabilidade do tubo polínico."
+    parecer += f"🛒 **NUTRIÇÃO (Idade: {dias_campo} dias):**\n"
+    if dias_campo < 90: parecer += "• Foco: **P + Ca** (Raiz e Parede Celular)."
+    elif dias_campo < 180: parecer += "• Foco: **N + Mg** (Vegetação)."
+    else: parecer += "• Foco: **K + B** (Fruto)."
     parecer += "\n\n"
 
-    parecer += f"💧 **MANEJO HÍDRICO DE PRECISÃO:**\n"
-    parecer += f"• Reposição Real (ETc): {total_etc:.1f} mm para a semana.\n"
-    parecer += f"💡 **EXPLICAÇÃO:** Este valor considera a evaporação do ambiente cruzada com o coeficiente biológico (Kc) da sua cultura na fase atual.\n"
+    parecer += f"💧 **HÍDRICO:** Reposição de {total_etc:.1f} mm/semana (ETc).\n"
     
     return parecer, parecer_dinamico
 
-# --- 6. EXECUÇÃO ---
+# --- 7. EXECUÇÃO ---
 def get_agro_data_ultimate():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     try:
         response = requests.get(url); response.raise_for_status()
         data = response.json()
-    except Exception as e:
-        print(f"Erro API Clima: {e}")
-        return []
+    except: return []
 
     previsoes = []
     for i in range(0, min(40, len(data['list'])), 8):
@@ -162,48 +156,39 @@ def get_agro_data_ultimate():
         previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'vento': item['wind']['speed']*3.6, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
     return previsoes
 
-def registrar_log_master(previsoes, anotacao, parecer_dinamico):
+def registrar_log_master(previsoes, anotacao, parecer):
     arquivo = 'caderno_de_campo_master.csv'
     data_br = datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y')
     try:
         with open(arquivo, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            if not os.path.isfile(arquivo): writer.writerow(['Data', 'Temp', 'VPD', 'Manejo_Usuario', 'Parecer_Tecnico'])
-            parecer_limpo = parecer_dinamico.replace("\n", " | ")
-            writer.writerow([data_br, previsoes[0]['temp'], previsoes[0]['vpd'], anotacao, parecer_limpo])
-    except Exception as e:
-        print(f"Erro ao salvar CSV: {e}")
+            if not os.path.isfile(arquivo): writer.writerow(['Data', 'Temp', 'VPD', 'Manejo', 'Parecer'])
+            writer.writerow([data_br, previsoes[0]['temp'], previsoes[0]['vpd'], anotacao, parecer.replace("\n", " | ")])
+    except: pass
 
 def enviar_email(conteudo):
     msg = EmailMessage()
     msg.set_content(conteudo)
-    msg['Subject'] = f"💎 RELATÓRIO TÉCNICO DIÁRIO: {datetime.now(FUSO_BRASIL).strftime('%d/%m')}"
+    msg['Subject'] = f"💎 RELATÓRIO TÉCNICO: {datetime.now(FUSO_BRASIL).strftime('%d/%m')}"
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
     try:
-        # Tenta conectar e enviar
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
             smtp.send_message(msg)
-            smtp.quit() # Garante fechamento
-        print("✅ E-mail enviado com sucesso!")
-    except Exception as e:
-        print(f"❌ ERRO CRÍTICO AO ENVIAR E-MAIL: {e}")
+            smtp.quit()
+    except Exception as e: print(f"Erro Email: {e}")
 
 if __name__ == "__main__":
-    print("🔄 Iniciando Agro-Intel...")
     previsoes = get_agro_data_ultimate()
     if previsoes:
         anotacao = ler_atividades_usuario()
-        analise, parecer_ia = analisar_expert_educativo(previsoes, anotacao)
+        analise, parecer = analisar_expert_educativo(previsoes, anotacao)
         
         corpo = f"💎 CONSULTORIA AGRO-INTEL PREMIUM: IBICOARA/BA\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
-        corpo += "-"*60 + "\n📈 PREVISÃO 5 DIAS (OPENWEATHER):\n"
-        for p in previsoes: corpo += f"{p['data']} | {p['temp']}°C | Chuva: {p['chuva']}mm | ETc: {round(p['et0']*KC_ATUAL,2)}mm\n"
+        corpo += "-"*60 + "\n📈 PREVISÃO (OPENWEATHER):\n"
+        for p in previsoes: corpo += f"{p['data']} | {p['temp']}°C | Chuva: {p['chuva']}mm\n"
         corpo += f"\n{analise}"
         
         enviar_email(corpo)
-        registrar_log_master(previsoes, anotacao, parecer_ia)
-        print("✅ Processo concluído.")
-    else:
-        print("❌ Falha ao obter dados meteorológicos.")
+        registrar_log_master(previsoes, anotacao, parecer)
