@@ -1,4 +1,4 @@
-name: Alerta Climatico Diario
+name: Consultoria Agro-Intel (Versao Estavel)
 
 on:
   schedule:
@@ -21,23 +21,21 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Instalar dependências (Forçando Atualização)
+    - name: Instalar dependências
       run: |
         python -m pip install --upgrade pip
         pip install requests
-        pip install -U google-generativeai
 
-    - name: Executar Script Agro-Intel
+    - name: Executar Script Profissional
       env:
         OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
-        GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
       run: python clima_alerta.py
 
-    - name: Salvar Histórico (Commit e Push)
+    - name: Salvar Histórico e Limpar Input
       run: |
         git config --global user.name "AgroRobot-Ibicoara"
         git config --global user.email "agro-robot@github.com"
         git add input_atividades.txt caderno_de_campo_master.csv
-        git commit -m "📝 Registro Diário" || echo "Sem alterações"
+        git commit -m "📝 Registro Profissional Diário" || echo "Sem alterações"
         git push
