@@ -3,106 +3,186 @@ import os
 import smtplib
 import math
 import csv
-import logging
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
-# --- 1. CONFIGURAÇÕES GERAIS (SETUP) ---
-# True = Manda e-mail AGORA e não apaga o input (Para testar).
-# False = Modo Produção (Respeita horários e limpa input).
+# --- 1. CONFIGURAÇÕES ---
+# MODO_TESTE: Se True, ignora horário e roda o Relatório Completo agora.
+# Se False, obedece o relógio (Manhã=Relatório, Tarde=Vigilância).
 MODO_TESTE = True 
 
 DATA_PLANTIO = datetime(2025, 11, 25) 
 KC_ATUAL = 0.75 
 FUSO_BRASIL = timezone(timedelta(hours=-3))
 CIDADE = "Ibicoara, BR"
-
-# Credenciais
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 
-# Configuração de Logs (Para auditoria profissional)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (KNOWLEDGE BASE) ---
-DB_CIENCIA = {
-    'vpd_baixo': """
-    ⚠️ **ANÁLISE TERMODINÂMICA (VPD < 0.4 kPa): BLOQUEIO HIDRÁULICO**
-    • **Fisiologia:** Atmosfera saturada. Déficit de pressão de vapor nulo.
-    • **Consequência:** A "bomba hidráulica" do xilema desliga. Sem transpiração, cessa o fluxo de massa.
-    • **Impacto:** Cálcio e Boro (imóveis) não chegam aos frutos. Risco severo de doenças (Gutação).
-    """,
-    'vpd_alto': """
-    🔥 **ANÁLISE TERMODINÂMICA (VPD > 1.4 kPa): ESTRESSE ATMOSFÉRICO**
-    • **Fisiologia:** Alta demanda evaporativa.
-    • **Reação:** Fechamento estomático imediato para evitar plasmólise.
-    • **Impacto:** Interrupção da fotossíntese (sem CO2) e paralisação do ganho de biomassa.
-    """,
-    'vpd_ideal': """
-    ✅ **ANÁLISE TERMODINÂMICA (VPD IDEAL): EFICIÊNCIA MÁXIMA**
-    • **Fisiologia:** Equilíbrio térmico. Estômatos abertos.
-    • **Impacto:** Transpiração (resfriamento) e Fixação de Carbono simultâneas. Máxima absorção de nutrientes.
-    """,
-    'nutri_raiz': """
-    🛒 **NUTRIÇÃO: FASE DE ENRAIZAMENTO**
-    • **Foco:** Fósforo (P) e Cálcio (Ca).
-    • **Bioquímica:** P = ATP (Energia para divisão celular). Ca = Pectatos (Cimento da parede celular/Resistência).
-    """,
-    'nutri_veg': """
-    🛒 **NUTRIÇÃO: FASE VEGETATIVA**
-    • **Foco:** Nitrogênio (N) e Magnésio (Mg).
-    • **Bioquímica:** N = Proteínas e Aminoácidos. Mg = Átomo central da Clorofila (Conversão de Luz em Energia).
-    """,
-    'nutri_fruto': """
-    🛒 **NUTRIÇÃO: FASE DE FRUTIFICAÇÃO**
-    • **Foco:** Potássio (K) e Boro (B).
-    • **Bioquímica:** K = Transporte de açúcares (Floema). B = Viabilidade do tubo polínico e divisão celular no fruto.
-    """
-}
-
+# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (SEU CÓDIGO FIEL) ---
 FARMACIA_AGRO = {
-    'botrytis': "🦠 **PROTOCOLO (Botrytis):** *Fludioxonil*, *Ciprodinil* ou *Bacillus subtilis*.",
-    'antracnose': "🦠 **PROTOCOLO (Antracnose):** *Azoxistrobina* + *Difenoconazol*.",
-    'ferrugem': "🦠 **PROTOCOLO (Ferrugem):** *Tebuconazol* ou *Protioconazol*.",
-    'ácaro': "🦠 **PROTOCOLO (Ácaros):** *Abamectina* ou *Espirodiclofeno*."
+    'botrytis': "💊 **TRATAMENTO (Botrytis):** *Fludioxonil*, *Ciprodinil* ou *Bacillus subtilis*.",
+    'antracnose': "💊 **TRATAMENTO (Antracnose):** *Azoxistrobina* + *Difenoconazol*.",
+    'ferrugem': "💊 **TRATAMENTO (Ferrugem):** *Tebuconazol*.",
+    'ácaro': "💊 **TRATAMENTO (Ácaros):** *Abamectina* ou *Espirodiclofeno*."
 }
 
-# --- 3. MOTOR DE CÁLCULO ---
-def calcular_delta_t_e_vpd(temp, umidade):
-    try:
-        es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
-        ea = es * (umidade / 100)
-        vpd = round(es - ea, 2)
-        tw = temp * math.atan(0.151977 * (umidade + 8.313659)**0.5) + \
-             math.atan(temp + umidade) - math.atan(umidade - 1.676331) + \
-             0.00391838 * (umidade)**1.5 * math.atan(0.023101 * umidade) - 4.686035
-        delta_t = round(temp - tw, 1)
-        return delta_t, vpd
-    except Exception as e:
-        logging.error(f"Erro matemático: {e}")
-        return 0, 0
+FRASES_VPD = {
+    'alto': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD ALTO > 1.3 kPa):**\nA atmosfera está drenando água excessivamente. Para evitar cavitação no xilema, a planta fechou os estômatos. \n**Consequência:** Interrupção imediata da fotossíntese (sem entrada de CO2) e travamento da absorção de Cálcio (risco de Tip Burn).",
+    'baixo': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD BAIXO < 0.4 kPa):**\nO ar está saturado. A planta não consegue transpirar. \n**Consequência:** A 'bomba hidráulica' do xilema desliga. Sem transpiração, não há fluxo de massa, ou seja, os nutrientes do solo não sobem para as folhas. Risco elevado de gutação e doenças.",
+    'ideal': "✅ **ANÁLISE FÍSICA DETALHADA (VPD IDEAL):**\nTermodinâmica perfeita. A planta opera com máxima condutância estomática, transpirando e fixando carbono simultaneamente. É o momento de maior eficiência no uso da água e fertilizantes."
+}
 
-# --- 4. GESTÃO DE DADOS ---
+# --- 3. CÁLCULOS ---
+def calcular_delta_t_e_vpd(temp, umidade):
+    es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
+    ea = es * (umidade / 100)
+    vpd = round(es - ea, 2)
+    tw = temp * math.atan(0.151977 * (umidade + 8.313659)**0.5) + \
+         math.atan(temp + umidade) - math.atan(umidade - 1.676331) + \
+         0.00391838 * (umidade)**1.5 * math.atan(0.023101 * umidade) - 4.686035
+    delta_t = round(temp - tw, 1)
+    return delta_t, vpd
+
+# --- 4. LEITURA ---
 def ler_atividades_usuario():
-    arquivo = 'input_atividades.txt'
-    if os.path.exists(arquivo):
-        with open(arquivo, 'r', encoding='utf-8') as f:
+    arquivo_input = 'input_atividades.txt'
+    if os.path.exists(arquivo_input):
+        with open(arquivo_input, 'r', encoding='utf-8') as f:
             conteudo = f.read().strip()
         
-        # Só limpa o arquivo se NÃO for teste e se for de manhã
+        # Só limpa o arquivo se for de manhã (não limpa se for o teste da tarde)
         hora = datetime.now(FUSO_BRASIL).hour
-        is_manhat = 5 <= hora <= 8
-        
-        if not MODO_TESTE and is_manhat and conteudo != "Início do caderno de campo":
-            with open(arquivo, 'w', encoding='utf-8') as f: f.write("")
-            logging.info("Input do usuário lido e limpo.")
-        return conteudo
+        is_manha = 5 <= hora <= 8
+        if not MODO_TESTE and is_manha and conteudo != "Início do caderno de campo":
+            with open(arquivo_input, 'w', encoding='utf-8') as f: f.write("")
+            return conteudo
+        # Se for teste ou tarde, apenas lê sem apagar
+        if conteudo and conteudo != "Início do caderno de campo":
+            return conteudo
     return ""
 
-def enviar_email(assunto, corpo):
+# --- 5. O CÉREBRO (DECISOR CRUZADO) ---
+def revisor_estrategico(vpd, chuva_sensor, texto_usuario):
+    texto = texto_usuario.lower()
+    
+    # Detecção
+    usuario_relatou_chuva = any(p in texto for p in ["chuva", "água", "molhou"])
+    usuario_adubou = any(p in texto for p in ["adubo", "fertirrigação", "nitrato", "cálcio"])
+    tem_praga = any(p in texto for p in FARMACIA_AGRO.keys())
+    vpd_baixo = vpd < 0.4
+    solo_saturado = chuva_sensor > 5.0 or usuario_relatou_chuva
+
+    # Lógica de Decisão
+    if usuario_adubou and solo_saturado:
+        return "🔴 **ERRO ESTRATÉGICO:** Fertirrigação em solo saturado. Ocorre lixiviação (perda) de nutrientes e anoxia radicular."
+    elif usuario_adubou and vpd_baixo:
+        return "🟡 **ALERTA DE INEFICIÊNCIA:** Nutrição aplicada com VPD Baixo. Sem transpiração, o Cálcio não sobe para o fruto."
+    elif not usuario_adubou and vpd_baixo:
+        return "⛔ **DIRETRIZ DE BLOQUEIO:** Ar saturado. A planta desligou o metabolismo. **NÃO IRRIGUE HOJE**."
+    elif solo_saturado:
+        return "🌧️ **MODO DRENAGEM:** Solo com excesso de água. Priorize a oxigenação da raiz (drenagem)."
+    elif tem_praga:
+        return "🛡️ **ALERTA FITOSSANITÁRIO:** Praga detectada. Verifique o Delta T antes de aplicar defensivos."
+    else:
+        return "✅ **OPERAÇÃO NOMINAL:** Condições estáveis. Siga o manejo preventivo."
+
+# --- 6. GERAÇÃO DO RELATÓRIO COMPLETO ---
+def gerar_relatorio_final(previsoes, anotacao_usuario):
+    hoje = previsoes[0]
+    dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
+    
+    # 1. Decisão Inteligente (Resumo no Topo)
+    sintese = revisor_estrategico(hoje['vpd'], hoje['chuva'], anotacao_usuario)
+    
+    # 2. Seleção do Texto Científico (VPD)
+    if hoje['vpd'] > 1.3: txt_vpd = FRASES_VPD['alto']
+    elif hoje['vpd'] < 0.4: txt_vpd = FRASES_VPD['baixo']
+    else: txt_vpd = FRASES_VPD['ideal']
+
+    # 3. Dados Complementares
+    gda_total = dias_campo * 14.8 
+    gda_hoje = max(hoje['temp'] - 10, 0)
+    horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88)
+    
+    # --- MONTAGEM DO E-MAIL (COM TODAS AS EXPLICAÇÕES) ---
+    parecer = f"🔎 **CONCLUSÃO ESTRATÉGICA (Resumo):**\n"
+    parecer += f"{sintese}\n\n"
+    
+    parecer += f"📊 **DADOS TÉCNICOS:**\n"
+    parecer += f"• VPD: {hoje['vpd']} kPa | Delta T: {hoje['delta_t']}°C\n"
+    parecer += f"{txt_vpd}\n\n"  # <--- AQUI VOLTOU A EXPLICAÇÃO RICA DO VPD
+    
+    parecer += f"📝 **DIÁRIO DE CAMPO:**\n"
+    parecer += f"• \"{anotacao_usuario if anotacao_usuario else 'Sem registros'}\"\n\n"
+
+    parecer += f"🍄 **MONITORAMENTO FITOSSANITÁRIO:**\n"
+    parecer += f"• {horas_molhamento} janelas de orvalho (Risco {'ALTO' if horas_molhamento > 2 else 'BAIXO'}).\n"
+    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha para emitir o tubo germinativo. O monitoramento de orvalho é mais crítico que a chuva total.\n\n"
+    
+    # AJUSTE DE FASES E VOLTA DA CIÊNCIA DO SOLO
+    parecer += f"🛒 **NUTRIÇÃO MINERAL SUGERIDA:**\n"
+    if dias_campo < 45:
+        parecer += "• FASE: Enraizamento (Início).\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n"
+        parecer += "💡 **CIÊNCIA DO SOLO:** O Fósforo é o gerador de ATP (energia celular) vital para o enraizamento. O Cálcio forma os pectatos da lamela média, a 'cola' que dá firmeza às células."
+    elif dias_campo < 130:
+        parecer += "• FASE: Crescimento Vegetativo.\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n"
+        parecer += "💡 **CIÊNCIA DO SOLO:** O Nitrogênio é o bloco construtor de aminoácidos e proteínas. O Magnésio é o átomo central da molécula de clorofila; sem ele, não há conversão de luz em energia."
+    else:
+        parecer += "• FASE: Frutificação.\n• FOCO: **Potássio (K)** e **Boro (B)**.\n"
+        parecer += "💡 **CIÊNCIA DO SOLO:** O Potássio atua como regulador osmótico e transportador de fotoassimilados (açúcar) da folha para o dreno (fruto). O Boro é crucial para a viabilidade do pólen."
+    parecer += "\n\n"
+    
+    parecer += f"🧬 **FISIOLOGIA (Relógio Térmico):**\n"
+    parecer += f"• Idade: {dias_campo} dias | GDA Acumulado: {gda_total:.0f}\n"
+    parecer += f"💡 **FUNDAMENTAÇÃO:** Monitoramos a eficiência enzimática da planta. A conversão de luz em açúcar (Brix) depende do acúmulo de calor (Graus-Dia).\n\n"
+    
+    parecer += f"💧 **MANEJO HÍDRICO (ETc):**\n"
+    parecer += f"• Reposição Real: {sum(p['et0']*KC_ATUAL for p in previsoes):.1f} mm/semana.\n"
+    parecer += f"💡 **EXPLICAÇÃO:** É a 'transpiração real', calculada cruzando a evaporação do ambiente com o coeficiente biológico (Kc) da planta.\n"
+    
+    return parecer
+
+# --- 7. NOVA FUNÇÃO: VIGILÂNCIA DE MUDANÇA DE TEMPO ---
+def ronda_vigilancia(previsoes):
+    # Verifica apenas as próximas 9 horas
+    proximas_horas = previsoes[:3]
+    
+    chuva_imediata = sum(p['chuva'] for p in proximas_horas)
+    vento_max = max(p['vento'] for p in proximas_horas)
+    
+    # Se detectar perigo, manda e-mail. Se não, fica quieto.
+    if chuva_imediata > 5.0 or vento_max > 25.0:
+        alerta = f"🚨 **ALERTA DE MUDANÇA BRUSCA DE TEMPO**\n\n"
+        alerta += f"O sistema de vigilância detectou condições críticas não previstas:\n"
+        alerta += f"• Chuva Iminente: {chuva_imediata} mm\n"
+        alerta += f"• Vento Forte: {vento_max} km/h\n\n"
+        alerta += "⚠️ **RECOMENDAÇÃO:** Suspenda aplicações foliares para evitar deriva ou lavagem de produto."
+        enviar_email(f"🚨 ALERTA URGENTE: {datetime.now(FUSO_BRASIL).strftime('%H:%M')}", alerta)
+    else:
+        print("✅ Vigilância: Clima estável conforme previsão da manhã.")
+
+# --- 8. EXECUÇÃO ---
+def get_agro_data_ultimate():
+    url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
+    try:
+        response = requests.get(url); response.raise_for_status()
+        data = response.json()
+    except: return []
+
+    previsoes = []
+    for i in range(0, min(40, len(data['list'])), 8):
+        item = data['list'][i]
+        t, u = item['main']['temp'], item['main']['humidity']
+        dt, vpd = calcular_delta_t_e_vpd(t, u)
+        et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
+        chuva = sum([data['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(data['list'])])
+        previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'vento': item['wind']['speed']*3.6, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
+    return previsoes
+
+def enviar_email(assunto, conteudo):
     msg = EmailMessage()
-    msg.set_content(corpo)
+    msg.set_content(conteudo)
     msg['Subject'] = assunto
     msg['From'] = EMAIL_DESTINO
     msg['To'] = EMAIL_DESTINO
@@ -110,127 +190,41 @@ def enviar_email(assunto, corpo):
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
             smtp.send_message(msg)
-        logging.info(f"✅ E-mail '{assunto}' enviado com sucesso!")
-    except Exception as e:
-        logging.error(f"❌ Falha crítica no envio de e-mail: {e}")
+            smtp.quit()
+    except: pass
 
-def get_agro_data():
-    url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
+def registrar_log_master(previsoes, anotacao, parecer):
+    arquivo = 'caderno_de_campo_master.csv'
+    data_br = datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y')
     try:
-        r = requests.get(url); r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        logging.error(f"Erro na API OpenWeather: {e}")
-        return None
+        with open(arquivo, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            if not os.path.isfile(arquivo): writer.writerow(['Data', 'Manejo', 'Decisao'])
+            writer.writerow([data_br, anotacao, parecer.split('\n')[1]])
+    except: pass
 
-# --- 5. INTELIGÊNCIA CENTRAL (DECISOR) ---
-def gerar_laudo_tecnico(previsoes, anotacao):
-    hoje = previsoes[0]
-    dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
-    
-    # --- A. ANÁLISE CRUZADA (CLIMA x MANEJO) ---
-    texto = anotacao.lower()
-    analise_campo = ""
-    
-    usuario_relatou_chuva = any(x in texto for x in ["chuva", "água", "molhou", "temporal"])
-    usuario_adubou = any(x in texto for x in ["adubo", "fertirrigação", "nitrato", "cálcio", "aplicação"])
-    solo_saturado = hoje['chuva'] > 5.0 or usuario_relatou_chuva
-    vpd_critico = hoje['vpd'] < 0.4
-    
-    if usuario_adubou and solo_saturado:
-        analise_campo += "🔴 **DIAGNÓSTICO CRÍTICO:** Fertirrigação em solo saturado. Ocorre lixiviação (lavagem) e Anoxia Radicular.\n"
-    elif not usuario_adubou and vpd_critico:
-        analise_campo += "⛔ **DIRETRIZ DE BLOQUEIO:** Ar saturado. Planta não absorve. NÃO IRRIGUE HOJE.\n"
-    elif usuario_adubou and vpd_critico:
-         analise_campo += "🟡 **ALERTA DE INEFICIÊNCIA:** Adubação com VPD baixo. Nutriente não sobe para a folha.\n"
-    else:
-        analise_campo += "✅ **OPERAÇÃO NOMINAL:** Manejo preventivo padrão.\n"
-
-    for praga, texto_tec in FARMACIA_AGRO.items():
-        if praga in texto: analise_campo += f"{texto_tec}\n"
-
-    # --- B. CONTEÚDO CIENTÍFICO ---
-    if hoje['vpd'] > 1.4: texto_vpd = DB_CIENCIA['vpd_alto']
-    elif hoje['vpd'] < 0.4: texto_vpd = DB_CIENCIA['vpd_baixo']
-    else: texto_vpd = DB_CIENCIA['vpd_ideal']
-
-    if dias_campo < 45: texto_nutri = DB_CIENCIA['nutri_raiz']
-    elif dias_campo < 130: texto_nutri = DB_CIENCIA['nutri_veg']
-    else: texto_nutri = DB_CIENCIA['nutri_fruto']
-
-    gda_total = dias_campo * 14.8
-    horas_orvalho = sum(1 for p in previsoes if p['umidade'] > 88)
-    
-    # --- C. MONTAGEM ---
-    laudo = f"🏛️ **LAUDO TÉCNICO PROFISSIONAL**\n📍 Unidade: {CIDADE} | Idade: {dias_campo} dias\n\n"
-    laudo += f"🔎 **1. ANÁLISE DE MANEJO:**\nRegistro: \"{anotacao}\"\n{analise_campo}"
-    laudo += "-"*40 + "\n"
-    laudo += f"🌡️ **2. FISIOLOGIA:**\n• VPD: {hoje['vpd']} kPa | Delta T: {hoje['delta_t']}°C\n{texto_vpd}\n"
-    laudo += f"💊 **3. SANIDADE:**\n• Orvalho: {horas_orvalho} janelas. (Risco {'ALTO' if horas_orvalho > 2 else 'BAIXO'}).\n\n"
-    laudo += f"{texto_nutri}\n"
-    laudo += f"🧬 **4. METABOLISMO:**\n• GDA Acumulado: {gda_total:.0f}\n"
-    
-    return laudo
-
-# --- 6. SISTEMA DE VIGILÂNCIA (SENTINELA DA TARDE) ---
-def ronda_vigilancia(previsoes):
-    logging.info("🔭 Iniciando Ronda de Vigilância Climática...")
-    # Analisa próximas 9 horas
-    chuva_prox = sum(p['chuva'] for p in previsoes[:3])
-    vento_max = max(p['vento'] for p in previsoes[:3])
-    
-    if chuva_prox > 5.0 or vento_max > 25:
-        alerta = f"🚨 **ALERTA DE MUDANÇA BRUSCA DE CENÁRIO**\n\n"
-        alerta += f"Alteração crítica não prevista pela manhã.\n"
-        alerta += f"• Chuva Iminente: {chuva_prox}mm\n"
-        alerta += f"• Vento: {vento_max} km/h\n\n"
-        alerta += "⚠️ **AÇÃO:** Suspenda aplicações foliares e fertirrigação."
-        enviar_email(f"🚨 ALERTA URGENTE: {datetime.now(FUSO_BRASIL).strftime('%H:%M')}", alerta)
-    else:
-        logging.info("✅ Vigilância: Sem alterações críticas.")
-
-# --- 7. EXECUTOR MESTRE ---
 if __name__ == "__main__":
-    logging.info("🚀 Iniciando Sistema Agro-Intel...")
-    raw = get_agro_data()
-    
-    if raw:
-        # Processamento de Dados (ETL)
-        previsoes = []
-        for i in range(0, min(40, len(raw['list'])), 8):
-            item = raw['list'][i]
-            t, u = item['main']['temp'], item['main']['humidity']
-            dt, vpd = calcular_delta_t_e_vpd(t, u)
-            et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
-            chuva = sum([raw['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(raw['list'])])
-            previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'vento': item['wind']['speed']*3.6, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
-
-        hora = datetime.now(FUSO_BRASIL).hour
+    previsoes = get_agro_data_ultimate()
+    if previsoes:
+        hora_agora = datetime.now(FUSO_BRASIL).hour
         
-        # --- LÓGICA DE ROTINA ---
-        # Se for teste OU horário da manhã (05-08h) -> Relatório Completo
-        if MODO_TESTE or (5 <= hora <= 8):
-            logging.info("📝 Gerando Relatório Matinal Completo...")
+        # LÓGICA:
+        # 1. Se MODO_TESTE = True -> Roda Relatório Completo (Para você ver agora).
+        # 2. Se for de manhã (05h-08h) -> Roda Relatório Completo.
+        # 3. Se for tarde -> Roda Vigilância (Alertas).
+        
+        if MODO_TESTE or (5 <= hora_agora <= 8):
+            print("📝 Gerando Relatório Completo...")
             anotacao = ler_atividades_usuario()
-            laudo = gerar_laudo_tecnico(previsoes, anotacao)
+            corpo = gerar_relatorio_final(previsoes, anotacao)
             
-            # Tabela Resumo
-            header = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
-            header += "-"*60 + "\n"
+            cabecalho = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
+            cabecalho += "-"*60 + "\n"
             for p in previsoes:
-                header += f"{p['data']} | {p['temp']}°C | 🌧️ {p['chuva']}mm | 💧 {round(p['et0']*KC_ATUAL, 2)}mm\n"
+                cabecalho += f"{p['data']} | {p['temp']}°C | 🌧️ {p['chuva']}mm | 💧 {round(p['et0']*KC_ATUAL, 2)}mm\n"
             
-            enviar_email(f"💎 LAUDO TÉCNICO: {datetime.now(FUSO_BRASIL).strftime('%d/%m')}", header + "\n" + laudo)
-            
-            # Salvar no Histórico (CSV)
-            try:
-                with open('caderno_de_campo_master.csv', 'a', newline='', encoding='utf-8') as f:
-                    csv.writer(f).writerow([datetime.now().strftime('%d/%m/%Y'), previsoes[0]['temp'], anotacao, "Laudo Enviado"])
-            except Exception as e: logging.error(f"Erro CSV: {e}")
-            
+            enviar_email(cabecalho + "\n" + corpo)
+            registrar_log_master(previsoes, anotacao, corpo)
         else:
-            # Se for tarde e não for teste -> Vigilância
+            print("🔭 Executando Vigilância...")
             ronda_vigilancia(previsoes)
-            
-    else:
-        logging.error("❌ Falha na conexão com API de Clima.")
