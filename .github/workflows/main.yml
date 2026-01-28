@@ -1,9 +1,9 @@
-name: Monitoramento Agro-Intel
+name: Alerta Climatico Diario
 
 on:
   schedule:
-    - cron: '0 9,14,18 * * *' # 06h, 11h e 15h (Horário Bahia)
-  workflow_dispatch: # ESSA LINHA É CRITICAL: Ela libera o botão de teste manual
+    - cron: '0 9 * * *' # 06:00 em Ibicoara
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout do código
       uses: actions/checkout@v3
@@ -24,16 +25,16 @@ jobs:
       run: |
         pip install requests
 
-    - name: Executar Script
+    - name: Executar Script Agro-Intel
       env:
         OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       run: python clima_alerta.py
 
-    - name: Salvar Logs
+    - name: Salvar Histórico (Commit e Push)
       run: |
-        git config --global user.name "AgroBot"
-        git config --global user.email "bot@github.com"
+        git config --global user.name "AgroRobot-Ibicoara"
+        git config --global user.email "agro-robot@github.com"
         git add input_atividades.txt caderno_de_campo_master.csv
-        git commit -m "Log Diário" || echo "Sem alterações"
+        git commit -m "📝 Registro Diário" || echo "Sem alterações"
         git push
