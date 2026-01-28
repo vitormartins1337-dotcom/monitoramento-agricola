@@ -2,7 +2,10 @@ name: Alerta Climatico Diario
 
 on:
   schedule:
-    - cron: '0 9 * * *' # 06:00 em Ibicoara
+    # 09h UTC = 06h Bahia (Relatório)
+    # 14h UTC = 11h Bahia (Vigilância 1)
+    # 18h UTC = 15h Bahia (Vigilância 2)
+    - cron: '0 9,14,18 * * *'
   workflow_dispatch:
 
 permissions:
@@ -11,30 +14,24 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout do código
       uses: actions/checkout@v3
-
     - name: Configurar Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-
     - name: Instalar dependências
-      run: |
-        pip install requests
-
+      run: pip install requests
     - name: Executar Script Agro-Intel
       env:
         OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       run: python clima_alerta.py
-
-    - name: Salvar Histórico (Commit e Push)
+    - name: Salvar Histórico
       run: |
         git config --global user.name "AgroRobot-Ibicoara"
         git config --global user.email "agro-robot@github.com"
         git add input_atividades.txt caderno_de_campo_master.csv
-        git commit -m "📝 Registro Diário" || echo "Sem alterações"
+        git commit -m "📝 Log de Vigilância" || echo "Sem alterações"
         git push
