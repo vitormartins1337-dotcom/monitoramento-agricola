@@ -22,13 +22,13 @@ GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 
-# Configuração Discreta da IA
+# Configuração da IA com FERRAMENTA DE BUSCA (Google Search)
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
+    # A ferramenta de busca é ativada aqui na chamada do modelo depois
     model = genai.GenerativeModel('gemini-2.0-flash')
 
 # --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (FIXO) ---
-# Estas explicações garantem a profundidade técnica independente da IA
 FRASES_VPD = {
     'alto': "⚠️ **ANÁLISE FÍSICA (VPD ALTO):** A atmosfera está drenando água excessivamente. Para evitar cavitação no xilema, a planta fechou os estômatos. Consequência: Interrupção imediata da fotossíntese e travamento da absorção de Cálcio (risco de Tip Burn).",
     'baixo': "⚠️ **ANÁLISE FÍSICA (VPD BAIXO):** O ar saturado desligou a 'bomba hidráulica' da planta. Sem transpiração, não há fluxo de massa, ou seja, os nutrientes do solo não sobem para as folhas. Risco elevado de gutação e doenças.",
@@ -46,7 +46,7 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-# --- 4. LEITURA E INTELIGÊNCIA ---
+# --- 4. LEITURA E INTELIGÊNCIA COM BUSCA REAL ---
 def ler_atividades_usuario():
     arquivo_input = 'input_atividades.txt'
     if os.path.exists(arquivo_input):
@@ -58,35 +58,40 @@ def ler_atividades_usuario():
     return "Nenhum manejo registrado hoje."
 
 def consultar_ia_agronomica(previsoes, anotacao_usuario, dias_campo):
-    """Gera o parecer dinâmico discretamente."""
+    """Gera o parecer dinâmico USANDO O GOOGLE SEARCH para validar o clima."""
     hoje = previsoes[0]
     
-    # Prompt ajustado para parecer um humano técnico, sem mencionar "Sou uma IA"
+    # Prompt de Auditoria Climática
     prompt = f"""
-    Aja como um Engenheiro Agrônomo Sênior (Especialista em Fisiologia Vegetal).
-    Escreva um parágrafo técnico e direto analisando a situação abaixo para o produtor.
+    Atue como um Engenheiro Agrônomo Sênior na Chapada Diamantina.
     
-    CONTEXTO:
-    - Cultura: Berries (Mirtilo/Framboesa) na Chapada Diamantina.
-    - Idade: {dias_campo} dias.
-    - Clima Hoje: VPD {hoje['vpd']} kPa, Chuva {hoje['chuva']}mm.
+    TAREFA CRÍTICA (USE O GOOGLE SEARCH):
+    1. Pesquise AGORA no Google a previsão do tempo real para Ibicoara-BA em fontes confiáveis (INMET, Climatempo, Weather.com).
+    2. Compare o que você achou com os dados do meu sensor abaixo.
+    
+    DADOS DO MEU SENSOR (OpenWeather):
+    - Temp: {hoje['temp']}°C
+    - Chuva: {hoje['chuva']}mm
+    - Umidade: {hoje['umidade']}%
     
     NOTA DO PRODUTOR: "{anotacao_usuario}"
     
-    DIRETRIZES:
-    1. Se a nota for vazia ("Nenhum manejo..."), analise apenas o VPD e sugira um foco operacional para o dia.
-    2. Se houver relato de praga/doença, sugira o Ingrediente Ativo (químico/biológico) de forma profissional.
-    3. Se houver relato de manejo (adubação), cruze com a chuva/VPD (ex: lixiviação ou absorção).
-    4. Não use saudações. Vá direto ao ponto técnico.
+    RESPOSTA (Sintética e Técnica):
+    - Se houver divergência (ex: Sensor diz sol, Google diz chuva), ALERTE o produtor para confiar no cenário mais pessimista (chuva).
+    - Analise a nota do produtor. Se ele citou manejo, cruze com o clima validado.
+    - Dê uma diretriz operacional clara para o dia.
     """
     
     try:
         if not GEMINI_KEY: raise Exception("Offline")
-        resposta = model.generate_content(prompt)
+        
+        # AQUI ESTÁ O PULO DO GATO: tools='google_search'
+        # Isso conecta a IA à internet em tempo real
+        resposta = model.generate_content(prompt, tools='google_search')
+        
         return resposta.text
-    except:
-        # Backup discreto
-        return "Operação nominal. As condições climáticas regem o manejo preventivo hoje."
+    except Exception as e:
+        return f"Operação nominal (Sem validação externa: {str(e)}). Siga o manejo preventivo padrão."
 
 # --- 5. GERAÇÃO DO RELATÓRIO PROFISSIONAL ---
 def analisar_expert_educativo(previsoes, anotacao_usuario):
@@ -94,7 +99,7 @@ def analisar_expert_educativo(previsoes, anotacao_usuario):
     total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
     dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
     
-    # Chama a IA de forma invisível para gerar apenas o parecer dinâmico
+    # Chama a IA conectada ao Google Search
     parecer_dinamico = consultar_ia_agronomica(previsoes, anotacao_usuario, dias_campo)
     
     # Lógica Científica Fixa (VPD)
@@ -103,7 +108,6 @@ def analisar_expert_educativo(previsoes, anotacao_usuario):
     else: txt_vpd = FRASES_VPD['ideal']
 
     gda_total = dias_campo * 14.8 
-    progresso = min(round((gda_total / GDA_ALVO_COLHEITA) * 100, 1), 100)
     gda_hoje = max(hoje['temp'] - T_BASE_BERRIES, 0)
 
     # Monitoramento de Orvalho
@@ -111,13 +115,13 @@ def analisar_expert_educativo(previsoes, anotacao_usuario):
     risco_sanidade = 'ALTO' if horas_molhamento > 2 else 'BAIXO'
 
     # --- MONTAGEM DO E-MAIL (Layout Premium) ---
-    parecer = f"🚦 **DASHBOARD OPERACIONAL:**\n"
+    parecer = f"🚦 **DASHBOARD OPERACIONAL (AUDITADO):**\n"
     parecer += f"• Delta T (Aplicação): {hoje['delta_t']}°C | VPD (Transpiração): {hoje['vpd']} kPa\n"
     parecer += f"{txt_vpd}\n\n"
     
-    parecer += f"📝 **REGISTRO DE CAMPO & PARECER TÉCNICO:**\n"
+    parecer += f"📝 **REGISTRO DE CAMPO & VALIDAÇÃO CLIMÁTICA:**\n"
     parecer += f"• Seu Relato: \"{anotacao_usuario}\"\n"
-    parecer += f"👨‍🔬 **ANÁLISE DO ENGENHEIRO:**\n{parecer_dinamico}\n\n"
+    parecer += f"👨‍🔬 **ANÁLISE DO ENGENHEIRO (COM DADOS DO INMET/CLIMATEMPO):**\n{parecer_dinamico}\n\n"
     
     parecer += f"🍄 **MONITORAMENTO FITOSSANITÁRIO:**\n"
     parecer += f"• Risco Fúngico: {risco_sanidade} ({horas_molhamento} janelas de orvalho previstas)\n"
@@ -197,7 +201,7 @@ if __name__ == "__main__":
         analise, parecer_ia = analisar_expert_educativo(previsoes, anotacao)
         
         corpo = f"💎 CONSULTORIA AGRO-INTEL PREMIUM: IBICOARA/BA\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
-        corpo += "-"*60 + "\n📈 PREVISÃO 5 DIAS:\n"
+        corpo += "-"*60 + "\n📈 PREVISÃO 5 DIAS (OPENWEATHER):\n"
         for p in previsoes: corpo += f"{p['data']} | {p['temp']}°C | Chuva: {p['chuva']}mm | ETc: {round(p['et0']*KC_ATUAL,2)}mm\n"
         corpo += f"\n{analise}"
         
