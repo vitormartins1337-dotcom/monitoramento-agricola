@@ -38,7 +38,7 @@ def calc_agro(temp, umid):
     dt = round(temp - tw, 1)
     return dt, vpd
 
-def gerar_laudo_profissional(previsoes, anotacao, mudanca, chuva_ant):
+def gerar_conteudo_html(previsoes, anotacao, mudanca, chuva_ant):
     hoje = previsoes[0]
     hoje_dt = datetime.now(FUSO_BRASIL)
     dias = (hoje_dt.date() - DATA_PLANTIO.date()).days
@@ -46,40 +46,115 @@ def gerar_laudo_profissional(previsoes, anotacao, mudanca, chuva_ant):
     consumo_total = sum(p['et0'] * KC_ATUAL for p in previsoes)
     balanco = chuva_total - consumo_total
 
-    # Definição dos textos de alta robustez
-    txt_vpd = ("Equilíbrio perfeito. Estômatos operando com máxima condutância para fixação de CO2 e termorregulação." 
-               if 0.45 <= hoje['vpd'] <= 1.25 else 
-               "Risco de cavitação no xilema e fechamento estomático defensivo." if hoje['vpd'] > 1.25 else 
-               "Saturação de vapor. Fluxo de massa interrompido por falta de gradiente de pressão.")
+    # Textos de Análise
+    txt_vpd = "Equilíbrio perfeito. Estômatos operando com máxima condutância." if 0.45 <= hoje['vpd'] <= 1.25 else \
+              "Risco de cavitação no xilema." if hoje['vpd'] > 1.25 else \
+              "Saturação de vapor. Fluxo de massa interrompido."
+    
+    txt_dt = "Ideal para preservação da gota e redução de deriva." if 2 <= hoje['delta_t'] <= 8 else \
+             "Risco de evaporação instantânea ou baixa deposição."
+             
+    txt_balanco = "Superávit: Risco de anoxia radicular. Reduza lâmina." if balanco > 0 else \
+                  "Déficit: Estresse hídrico. Aumente a reposição."
 
-    # MONTAGEM DA TABELA PROFISSIONAL
-    tabela = (
-        "| TÓPICO DE ANÁLISE | DIAGNÓSTICO TÉCNICO | FUNDAMENTAÇÃO CIENTÍFICA E IMPACTO |\n"
-        "| :--- | :--- | :--- |\n"
-        f"| **1. EQUILÍBRIO TERMICO (VPD)** | {hoje['vpd']} kPa | {txt_vpd} |\n"
-        f"| **2. JANELA DE APLICAÇÃO (ΔT)** | {hoje['delta_t']} °C | {'Ideal para preservação da integridade da gota e redução de deriva evaporativa.' if 2 <= hoje['delta_t'] <= 8 else 'Risco de evaporação instantânea ou baixa deposição.'} |\n"
-        f"| **3. BALANÇO HÍDRICO (7D)** | {balanco:.1f} mm | {'Superávit: Risco de anoxia radicular e lixiviação de Nitratos. Reduza lâmina.' if balanco > 0 else 'Déficit: Estresse hídrico iminente. Aumente a reposição via ETc.'} |\n"
-        f"| **4. RISCO SANITÁRIO** | {sum(1 for p in previsoes if p['umid'] > 88)} Janelas | {'Risco Alto: Umidade favorável à emissão do tubo germinativo de Botrytis.' if sum(1 for p in previsoes if p['umid'] > 88) > 2 else 'Estabilidade: Baixa pressão de inóculo por falta de água livre.'} |\n"
-        f"| **5. NUTRIÇÃO (FASE)** | Vegetativo | **Magnésio (Mg):** Atua como átomo central da Clorofila para conversão de ATP. **Nitrogênio (N):** Síntese de proteínas estruturais. |\n"
-        f"| **6. FISIOLOGIA (GDA)** | {dias * 14.8:.0f} Acumulado | A taxa de conversão de fotoassimilados em Brix é dependente do somatório térmico acumulado na fenologia atual. |\n"
-    )
+    # ESTILO CSS (Design Profissional)
+    css = """
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        h2 { color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 5px; }
+        .alerta { background-color: #ffe6e6; border: 1px solid #ffcccc; padding: 10px; color: #cc0000; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background-color: #27ae60; color: white; padding: 10px; text-align: left; }
+        td { border: 1px solid #ddd; padding: 8px; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .destaque { font-weight: bold; color: #2c3e50; }
+        .footer { font-size: 12px; color: #777; margin-top: 20px; text-align: center; }
+    </style>
+    """
 
-    # Radar Regional
-    radar = "\n### 🛰️ RADAR REGIONAL (DIRECIONAMENTO)\n"
+    # CONSTRUÇÃO DO HTML
+    html = f"""
+    <html>
+    <head>{css}</head>
+    <body>
+        <h2>🏛️ LAUDO TÉCNICO AGRO-INTEL</h2>
+        <p><strong>Local:</strong> {CIDADE} | <strong>Data:</strong> {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}</p>
+    """
+
+    if mudanca:
+        html += f"""
+        <div class="alerta">
+            ⚠️ ALERTA: VOLATILIDADE DETECTADA<br>
+            Previsão anterior: {chuva_ant:.1f}mm | Atual: {chuva_total:.1f}mm. Ajuste operacional requerido.
+        </div>
+        """
+
+    # Tabela de Previsão
+    html += "<h3>📅 Previsão Semanal (Microclima)</h3><table><tr><th>Data</th><th>Temp</th><th>Chuva</th><th>Consumo (ETc)</th></tr>"
+    for p in previsoes:
+        html += f"<tr><td>{p['data']}</td><td>{p['temp']}°C</td><td>{p['chuva']}mm</td><td>{round(p['et0']*KC_ATUAL, 2)}mm</td></tr>"
+    html += "</table>"
+
+    # Diário
+    html += f"<h3>📝 Diário de Campo</h3><p><em>\"{anotacao if anotacao else 'Sem registros manuais.'}\"</em></p>"
+
+    # Tabela de Análise Técnica
+    html += """
+    <h3>🔬 Diagnóstico e Fundamentação</h3>
+    <table>
+        <tr>
+            <th style="width: 25%;">TÓPICO</th>
+            <th style="width: 20%;">VALOR</th>
+            <th>DIAGNÓSTICO & CIÊNCIA</th>
+        </tr>
+    """
+    html += f"""
+        <tr>
+            <td class="destaque">1. VPD (Termodinâmica)</td>
+            <td>{hoje['vpd']} kPa</td>
+            <td>{txt_vpd}</td>
+        </tr>
+        <tr>
+            <td class="destaque">2. Delta T (Aplicação)</td>
+            <td>{hoje['delta_t']} °C</td>
+            <td>{txt_dt}</td>
+        </tr>
+        <tr>
+            <td class="destaque">3. Balanço Hídrico (7d)</td>
+            <td>{balanco:.1f} mm</td>
+            <td>{txt_balanco}</td>
+        </tr>
+        <tr>
+            <td class="destaque">4. Risco Sanitário</td>
+            <td>{sum(1 for p in previsoes if p['umid'] > 88)} Janelas</td>
+            <td>{'Risco Alto: Umidade favorável ao tubo germinativo.' if sum(1 for p in previsoes if p['umid'] > 88) > 2 else 'Estabilidade: Baixa pressão de inóculo.'}</td>
+        </tr>
+        <tr>
+            <td class="destaque">5. Nutrição (Fisiologia)</td>
+            <td>Vegetativo</td>
+            <td><strong>Magnésio (Mg):</strong> Centro da Clorofila (ATP). <strong>Nitrogênio (N):</strong> Proteínas estruturais.</td>
+        </tr>
+        <tr>
+            <td class="destaque">6. Relógio Térmico</td>
+            <td>{dias * 14.8:.0f} GDA</td>
+            <td>Conversão de fotoassimilados em Brix depende do acúmulo térmico.</td>
+        </tr>
+    </table>
+    """
+
+    # Radar
+    html += "<h3>🛰️ Radar Regional</h3><ul>"
     for v in CIDADES_VIZINHAS:
         url = f"https://api.openweathermap.org/data/2.5/weather?q={v}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
         try:
             r = requests.get(url).json()
-            radar += f"- **{v.split(',')[0]}:** {r['weather'][0]['description']} ({r['main']['temp']}°C). "
-            if r.get('rain'): radar += "🚨 **Precipitação detectada nos vizinhos.**"
-            radar += "\n"
+            alerta_vizinho = "🚨" if r.get('rain') else "✅"
+            html += f"<li><strong>{v.split(',')[0]}:</strong> {alerta_vizinho} {r['weather'][0]['description']} ({r['main']['temp']}°C)</li>"
         except: continue
-
-    resumo = f"## 📝 DIÁRIO DE CAMPO\n> {anotacao if anotacao else 'Sem registros manuais.'}\n\n"
-    if mudanca:
-        resumo = f"### ⚠️ ALERTA: VOLATILIDADE DETECTADA\nPrevisão anterior: {chuva_ant:.1f}mm | Atual: {chuva_total:.1f}mm. Ajuste operacional imediato requerido.\n\n" + resumo
-
-    return resumo + tabela + radar
+    html += "</ul>"
+    
+    html += "<div class='footer'>Gerado automaticamente pelo Sistema Agro-Intel v7.0</div></body></html>"
+    return html
 
 def get_data():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
@@ -102,23 +177,22 @@ if __name__ == "__main__":
         c_tot = sum(p['chuva'] for p in prev)
         mudou, c_ant = gerenciar_memoria(c_tot)
         
-        with open('input_atividades.txt', 'r', encoding='utf-8') as f: anot = f.read().strip()
+        # Leitura segura do arquivo
+        if os.path.exists('input_atividades.txt'):
+             with open('input_atividades.txt', 'r', encoding='utf-8') as f: anot = f.read().strip()
+        else: anot = ""
         
-        laudo = gerar_laudo_profissional(prev, anot, mudou, c_ant)
+        html_content = gerar_conteudo_html(prev, anot, mudou, c_ant)
         
         assunto = f"{'⚠️ ALERTA: MUDANÇA' if mudou else '💎 LAUDO'} - {CIDADE} ({datetime.now(FUSO_BRASIL).strftime('%d/%m')})"
         
-        # Cabeçalho da Previsão Semanal
-        header = f"## 🏛️ LAUDO TÉCNICO AGRO-INTEL\n**Local:** {CIDADE} | **Data:** {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n\n"
-        header += "| Data | Temp | Chuva | Consumo (ETc) |\n| :--- | :--- | :--- | :--- |\n"
-        for p in prev:
-            header += f"| {p['data']} | {p['temp']}°C | {p['chuva']}mm | {round(p['et0']*KC_ATUAL, 2)}mm |\n"
-        
         msg = EmailMessage()
-        msg.set_content(header + "\n" + laudo)
         msg['Subject'] = assunto
         msg['From'] = EMAIL_DESTINO
         msg['To'] = EMAIL_DESTINO
+        msg.set_content("Seu cliente de e-mail não suporta HTML.") # Fallback
+        msg.add_alternative(html_content, subtype='html') # O segredo está aqui
+        
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
             smtp.send_message(msg)
