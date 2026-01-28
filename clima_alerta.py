@@ -7,10 +7,6 @@ from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
 # --- 1. CONFIGURAÇÕES ---
-# MODO_TESTE: Se True, ignora horário e roda o Relatório Completo agora.
-# Se False, obedece o relógio (Manhã=Relatório, Tarde=Vigilância).
-MODO_TESTE = True 
-
 DATA_PLANTIO = datetime(2025, 11, 25) 
 KC_ATUAL = 0.75 
 FUSO_BRASIL = timezone(timedelta(hours=-3))
@@ -19,7 +15,7 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 
-# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (SEU CÓDIGO FIEL) ---
+# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (FIXO) ---
 FARMACIA_AGRO = {
     'botrytis': "💊 **TRATAMENTO (Botrytis):** *Fludioxonil*, *Ciprodinil* ou *Bacillus subtilis*.",
     'antracnose': "💊 **TRATAMENTO (Antracnose):** *Azoxistrobina* + *Difenoconazol*.",
@@ -50,30 +46,21 @@ def ler_atividades_usuario():
     if os.path.exists(arquivo_input):
         with open(arquivo_input, 'r', encoding='utf-8') as f:
             conteudo = f.read().strip()
-        
-        # Só limpa o arquivo se for de manhã (não limpa se for o teste da tarde)
-        hora = datetime.now(FUSO_BRASIL).hour
-        is_manha = 5 <= hora <= 8
-        if not MODO_TESTE and is_manha and conteudo != "Início do caderno de campo":
-            with open(arquivo_input, 'w', encoding='utf-8') as f: f.write("")
-            return conteudo
-        # Se for teste ou tarde, apenas lê sem apagar
         if conteudo and conteudo != "Início do caderno de campo":
+            # Limpa o input após a leitura para o próximo dia
+            with open(arquivo_input, 'w', encoding='utf-8') as f: f.write("")
             return conteudo
     return ""
 
 # --- 5. O CÉREBRO (DECISOR CRUZADO) ---
 def revisor_estrategico(vpd, chuva_sensor, texto_usuario):
     texto = texto_usuario.lower()
-    
-    # Detecção
     usuario_relatou_chuva = any(p in texto for p in ["chuva", "água", "molhou"])
     usuario_adubou = any(p in texto for p in ["adubo", "fertirrigação", "nitrato", "cálcio"])
     tem_praga = any(p in texto for p in FARMACIA_AGRO.keys())
     vpd_baixo = vpd < 0.4
     solo_saturado = chuva_sensor > 5.0 or usuario_relatou_chuva
 
-    # Lógica de Decisão
     if usuario_adubou and solo_saturado:
         return "🔴 **ERRO ESTRATÉGICO:** Fertirrigação em solo saturado. Ocorre lixiviação (perda) de nutrientes e anoxia radicular."
     elif usuario_adubou and vpd_baixo:
@@ -87,40 +74,33 @@ def revisor_estrategico(vpd, chuva_sensor, texto_usuario):
     else:
         return "✅ **OPERAÇÃO NOMINAL:** Condições estáveis. Siga o manejo preventivo."
 
-# --- 6. GERAÇÃO DO RELATÓRIO COMPLETO ---
+# --- 6. GERAÇÃO DO RELATÓRIO ---
 def gerar_relatorio_final(previsoes, anotacao_usuario):
     hoje = previsoes[0]
     dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
-    
-    # 1. Decisão Inteligente (Resumo no Topo)
     sintese = revisor_estrategico(hoje['vpd'], hoje['chuva'], anotacao_usuario)
     
-    # 2. Seleção do Texto Científico (VPD)
     if hoje['vpd'] > 1.3: txt_vpd = FRASES_VPD['alto']
     elif hoje['vpd'] < 0.4: txt_vpd = FRASES_VPD['baixo']
     else: txt_vpd = FRASES_VPD['ideal']
 
-    # 3. Dados Complementares
     gda_total = dias_campo * 14.8 
-    gda_hoje = max(hoje['temp'] - 10, 0)
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88)
     
-    # --- MONTAGEM DO E-MAIL (COM TODAS AS EXPLICAÇÕES) ---
     parecer = f"🔎 **CONCLUSÃO ESTRATÉGICA (Resumo):**\n"
     parecer += f"{sintese}\n\n"
     
     parecer += f"📊 **DADOS TÉCNICOS:**\n"
     parecer += f"• VPD: {hoje['vpd']} kPa | Delta T: {hoje['delta_t']}°C\n"
-    parecer += f"{txt_vpd}\n\n"  # <--- AQUI VOLTOU A EXPLICAÇÃO RICA DO VPD
+    parecer += f"{txt_vpd}\n\n"
     
     parecer += f"📝 **DIÁRIO DE CAMPO:**\n"
     parecer += f"• \"{anotacao_usuario if anotacao_usuario else 'Sem registros'}\"\n\n"
 
     parecer += f"🍄 **MONITORAMENTO FITOSSANITÁRIO:**\n"
     parecer += f"• {horas_molhamento} janelas de orvalho (Risco {'ALTO' if horas_molhamento > 2 else 'BAIXO'}).\n"
-    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha para emitir o tubo germinativo. O monitoramento de orvalho é mais crítico que a chuva total.\n\n"
+    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha. O monitoramento de orvalho é mais crítico que a chuva total.\n\n"
     
-    # AJUSTE DE FASES E VOLTA DA CIÊNCIA DO SOLO
     parecer += f"🛒 **NUTRIÇÃO MINERAL SUGERIDA:**\n"
     if dias_campo < 45:
         parecer += "• FASE: Enraizamento (Início).\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n"
@@ -143,26 +123,7 @@ def gerar_relatorio_final(previsoes, anotacao_usuario):
     
     return parecer
 
-# --- 7. NOVA FUNÇÃO: VIGILÂNCIA DE MUDANÇA DE TEMPO ---
-def ronda_vigilancia(previsoes):
-    # Verifica apenas as próximas 9 horas
-    proximas_horas = previsoes[:3]
-    
-    chuva_imediata = sum(p['chuva'] for p in proximas_horas)
-    vento_max = max(p['vento'] for p in proximas_horas)
-    
-    # Se detectar perigo, manda e-mail. Se não, fica quieto.
-    if chuva_imediata > 5.0 or vento_max > 25.0:
-        alerta = f"🚨 **ALERTA DE MUDANÇA BRUSCA DE TEMPO**\n\n"
-        alerta += f"O sistema de vigilância detectou condições críticas não previstas:\n"
-        alerta += f"• Chuva Iminente: {chuva_imediata} mm\n"
-        alerta += f"• Vento Forte: {vento_max} km/h\n\n"
-        alerta += "⚠️ **RECOMENDAÇÃO:** Suspenda aplicações foliares para evitar deriva ou lavagem de produto."
-        enviar_email(f"🚨 ALERTA URGENTE: {datetime.now(FUSO_BRASIL).strftime('%H:%M')}", alerta)
-    else:
-        print("✅ Vigilância: Clima estável conforme previsão da manhã.")
-
-# --- 8. EXECUÇÃO ---
+# --- 7. EXECUÇÃO ---
 def get_agro_data_ultimate():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     try:
@@ -177,7 +138,7 @@ def get_agro_data_ultimate():
         dt, vpd = calcular_delta_t_e_vpd(t, u)
         et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
         chuva = sum([data['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(data['list'])])
-        previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'vento': item['wind']['speed']*3.6, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
+        previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
     return previsoes
 
 def enviar_email(assunto, conteudo):
@@ -190,41 +151,17 @@ def enviar_email(assunto, conteudo):
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
             smtp.send_message(msg)
-            smtp.quit()
-    except: pass
-
-def registrar_log_master(previsoes, anotacao, parecer):
-    arquivo = 'caderno_de_campo_master.csv'
-    data_br = datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y')
-    try:
-        with open(arquivo, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            if not os.path.isfile(arquivo): writer.writerow(['Data', 'Manejo', 'Decisao'])
-            writer.writerow([data_br, anotacao, parecer.split('\n')[1]])
     except: pass
 
 if __name__ == "__main__":
     previsoes = get_agro_data_ultimate()
     if previsoes:
-        hora_agora = datetime.now(FUSO_BRASIL).hour
+        anotacao = ler_atividades_usuario()
+        corpo = gerar_relatorio_final(previsoes, anotacao)
         
-        # LÓGICA:
-        # 1. Se MODO_TESTE = True -> Roda Relatório Completo (Para você ver agora).
-        # 2. Se for de manhã (05h-08h) -> Roda Relatório Completo.
-        # 3. Se for tarde -> Roda Vigilância (Alertas).
+        cabecalho = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
+        cabecalho += "-"*60 + "\n"
+        for p in previsoes:
+            cabecalho += f"{p['data']} | {p['temp']}°C | 🌧️ {p['chuva']}mm | 💧 Consumo: {round(p['et0']*KC_ATUAL, 2)}mm\n"
         
-        if MODO_TESTE or (5 <= hora_agora <= 8):
-            print("📝 Gerando Relatório Completo...")
-            anotacao = ler_atividades_usuario()
-            corpo = gerar_relatorio_final(previsoes, anotacao)
-            
-            cabecalho = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
-            cabecalho += "-"*60 + "\n"
-            for p in previsoes:
-                cabecalho += f"{p['data']} | {p['temp']}°C | 🌧️ {p['chuva']}mm | 💧 {round(p['et0']*KC_ATUAL, 2)}mm\n"
-            
-            enviar_email(cabecalho + "\n" + corpo)
-            registrar_log_master(previsoes, anotacao, corpo)
-        else:
-            print("🔭 Executando Vigilância...")
-            ronda_vigilancia(previsoes)
+        enviar_email(f"💎 RELATÓRIO COMPLETO: {datetime.now(FUSO_BRASIL).strftime('%d/%m')}", cabecalho + "\n" + corpo)
