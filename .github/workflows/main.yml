@@ -29,6 +29,6 @@ jobs:
       run: |
         git config --global user.name "AgroRobot"
         git config --global user.email "bot@github.com"
-        git add input_atividades.txt caderno_de_campo_master.csv
+        git add input_atividades.txt caderno_de_campo_master.csv memoria_chuva.txt
         git commit -m "Log Profissional" || echo "Sem alterações"
         git push
