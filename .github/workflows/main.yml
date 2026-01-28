@@ -21,10 +21,11 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Instalar dependências
+    - name: Instalar dependências (Forçando Atualização)
       run: |
         python -m pip install --upgrade pip
-        pip install requests google-generativeai
+        pip install requests
+        pip install -U google-generativeai
 
     - name: Executar Script Agro-Intel
       env:
@@ -38,5 +39,5 @@ jobs:
         git config --global user.name "AgroRobot-Ibicoara"
         git config --global user.email "agro-robot@github.com"
         git add input_atividades.txt caderno_de_campo_master.csv
-        git commit -m "📝 Registro IA + Clima" || echo "Sem alterações"
+        git commit -m "📝 Registro Diário" || echo "Sem alterações"
         git push
