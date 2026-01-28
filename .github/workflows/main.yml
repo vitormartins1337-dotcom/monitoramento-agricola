@@ -1,8 +1,8 @@
-name: Sistema Agro-Intel (Planejamento + Vigilancia)
+name: Monitoramento Agro-Intel
 
 on:
   schedule:
-    # Horários (UTC): 09h=06h BRT | 14h=11h BRT | 18h=15h BRT
+    # Horários UTC: 09h (06h BRT), 14h (11h BRT), 18h (15h BRT)
     - cron: '0 9,14,18 * * *'
   workflow_dispatch:
 
@@ -27,16 +27,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install requests
 
-    - name: Executar Script Inteligente
+    - name: Executar Script
       env:
         OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       run: python clima_alerta.py
 
-    - name: Atualizar Logs
+    - name: Salvar Logs
       run: |
-        git config --global user.name "AgroRobot"
+        git config --global user.name "AgroBot"
         git config --global user.email "bot@github.com"
         git add input_atividades.txt caderno_de_campo_master.csv
-        git commit -m "Log Automático" || echo "Sem alterações"
+        git commit -m "Log Diário" || echo "Sem alterações"
         git push
