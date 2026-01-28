@@ -7,7 +7,7 @@ import random
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
-# --- 1. CONFIGURAÇÕES E FUSO HORÁRIO ---
+# --- 1. CONFIGURAÇÕES ---
 DATA_PLANTIO = datetime(2025, 11, 25) 
 T_BASE_BERRIES = 10.0 
 GDA_ALVO_COLHEITA = 1200 
@@ -19,45 +19,45 @@ GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 CIDADE = "Ibicoara, BR"
 
-# --- 2. BANCO DE INTELIGÊNCIA (FRASES E QUÍMICOS) ---
+# --- 2. BANCO DE INTELIGÊNCIA (FRASES PROFUNDAS) ---
 
-# Variações de frases para não ficar repetitivo (Humanização)
-FRASES_DINAMICAS = {
-    'vpd_alto': [
-        "⚠️ O ar está 'roubando' água da planta. Os estômatos se fecharam para defesa.",
-        "⚠️ Atmosfera com alta demanda hídrica. A fotossíntese pode estar paralisada agora.",
-        "⚠️ Alerta de estresse: A planta parou de transpirar para não desidratar. Cálcio não sobe."
+FRASES_VPD = {
+    'alto': [
+        "⚠️ **ANÁLISE:** O ar está 'sedento' (VPD Alto). Para se proteger da desidratação, a planta fecha os estômatos. Consequência: A fotossíntese para (sem entrada de CO2) e o transporte de Cálcio é interrompido (risco de Tip Burn).",
+        "⚠️ **ANÁLISE:** Estresse Hídrico Atmosférico. A planta gasta energia apenas para se resfriar, sacrificando o enchimento de fruto. Evite adubações salinas agora para não queimar as raízes."
     ],
-    'vpd_ideal': [
-        "✅ Zona de conforto total. A 'bomba' de nutrientes está ligada no máximo.",
-        "✅ Condição perfeita para produção de biomassa e enchimento de fruto.",
-        "✅ Metabolismo acelerado. Ótimo momento para fertirrigação."
+    'baixo': [
+        "⚠️ **ANÁLISE:** Atmosfera saturada (VPD Baixo). A planta não consegue transpirar. Sem transpiração, a 'bomba hidráulica' do xilema desliga, impedindo que nutrientes do solo cheguem às folhas. Risco de gutação e doenças.",
+        "⚠️ **ANÁLISE:** Umidade excessiva no ar bloqueia a transpiração. A planta fica turgida, mas estagnada metabolicamente. Cuidado com o excesso de água no solo (anoxia)."
     ],
-    'sanidade_risco': [
-        "🍄 Atenção: O clima criou uma 'estufa' perfeita para fungos hoje.",
-        "🍄 Alerta vermelho: Molhamento foliar prolongado favorece esporulação.",
-        "🍄 Risco Fitossanitário: A folha não está secando rápido o suficiente."
-    ],
-    'sanidade_ok': [
-        "🛡️ Ambiente hostil para fungos. O vento e a baixa umidade estão ajudando.",
-        "🛡️ Baixo risco de infecção. As folhas estão secando rapidamente.",
-        "🛡️ Sanidade favorecida pelo clima seco e ventilado."
+    'ideal': [
+        "✅ **ANÁLISE:** Condição Termodinâmica Perfeita. A planta está transpirando com máxima eficiência, puxando água e nutrientes do solo e fixando carbono nas folhas. Momento de ouro para produção.",
+        "✅ **ANÁLISE:** Zona de Conforto Metabólico. Os estômatos estão abertos, garantindo máxima taxa fotossintética e transporte de Cálcio/Boro para os frutos."
     ]
 }
 
-# Banco de Defensivos (Ingredientes Ativos Comuns para Berries)
-FARMACIA_AGRO = {
-    'botrytis': "🧪 INDICAÇÃO QUÍMICA (Mofo Cinzento): Ingredientes comuns incluem **Fludioxonil**, **Ciprodinil** ou **Iprodiona**. Biológico: *Bacillus subtilis*.",
-    'antracnose': "🧪 INDICAÇÃO QUÍMICA (Antracnose): Ingredientes comuns incluem **Azoxistrobina**, **Difenoconazol** ou **Mancozebe** (protetor).",
-    'ferrugem': "🧪 INDICAÇÃO QUÍMICA (Ferrugem): Ingredientes comuns incluem **Tebuconazol** ou **Protioconazol**.",
-    'oídio': "🧪 INDICAÇÃO QUÍMICA (Oídio): Ingredientes comuns incluem **Enxofre**, **Metil Tiofanato** ou **Difenoconazol**.",
-    'ácaro': "🧪 INDICAÇÃO QUÍMICA (Ácaros): Ingredientes comuns incluem **Abamectina**, **Espirodiclofeno** ou **Propargite**.",
-    'lagarta': "🧪 INDICAÇÃO QUÍMICA (Lagartas): Ingredientes comuns incluem **Spinosad**, **Clorantraniliprole** ou Biológico: *Bacillus thuringiensis* (Bt).",
-    'tripes': "🧪 INDICAÇÃO QUÍMICA (Tripes): Ingredientes comuns incluem **Espinosade** ou **Imidacloprido** (Cuidado com abelhas!)."
+FRASES_SANIDADE = {
+    'risco': [
+        "🍄 **ALERTA BIOLÓGICO:** O clima criou uma câmara úmida ideal. Esporos de *Botrytis* e *Antracnose* precisam de apenas 4-6 horas de folha molhada para germinar. A prevenção é a única defesa agora.",
+        "🍄 **ALERTA BIOLÓGICO:** Molhamento foliar prolongado detectado. As hifas dos fungos penetram mais facilmente em tecidos túrgidos e úmidos. Monitore o centro da planta onde a ventilação é menor."
+    ],
+    'seguro': [
+        "🛡️ **CENÁRIO:** O ambiente está hostil para fungos. O vento e a baixa umidade relativa estão secando as folhas rapidamente, quebrando o ciclo de infecção.",
+        "🛡️ **CENÁRIO:** Baixa pressão de inóculo prevista. A rápida secagem foliar impede que os esporos desenvolvam o tubo germinativo."
+    ]
 }
 
-# --- 3. CÁLCULOS FÍSICOS ---
+FARMACIA_AGRO = {
+    'botrytis': "💊 **FARMÁCIA (Mofo Cinzento):** Ativos sugeridos: *Fludioxonil*, *Ciprodinil* ou *Fenhexamida*. Biológico: *Bacillus subtilis*.",
+    'antracnose': "💊 **FARMÁCIA (Antracnose):** Ativos sugeridos: *Azoxistrobina*, *Difenoconazol* ou *Mancozebe* (multissítio).",
+    'ferrugem': "💊 **FARMÁCIA (Ferrugem):** Ativos sugeridos: *Tebuconazol* ou *Protioconazol*.",
+    'oídio': "💊 **FARMÁCIA (Oídio):** Ativos sugeridos: *Enxofre*, *Metil Tiofanato* ou *Kasugamicina*.",
+    'ácaro': "💊 **FARMÁCIA (Ácaros):** Ativos sugeridos: *Abamectina*, *Espirodiclofeno* ou *Propargite*.",
+    'lagarta': "💊 **FARMÁCIA (Lagartas):** Ativos sugeridos: *Spinosad*, *Clorantraniliprole* ou *Bt* (*Bacillus thuringiensis*).",
+    'tripes': "💊 **FARMÁCIA (Tripes):** Ativos sugeridos: *Espinosade* ou *Imidacloprido* (Cuidado c/ abelhas!)."
+}
 
+# --- 3. CÁLCULOS ---
 def calcular_delta_t_e_vpd(temp, umidade):
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
     ea = es * (umidade / 100)
@@ -68,100 +68,114 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-# --- 4. INTERPRETAÇÃO E LEITURA ---
-
+# --- 4. LEITURA E GATILHOS ---
 def ler_atividades_usuario():
     arquivo_input = 'input_atividades.txt'
     if os.path.exists(arquivo_input):
         with open(arquivo_input, 'r', encoding='utf-8') as f:
             conteudo = f.read().strip()
         if conteudo and conteudo != "Início do caderno de campo":
-            with open(arquivo_input, 'w', encoding='utf-8') as f:
-                f.write("")
+            with open(arquivo_input, 'w', encoding='utf-8') as f: f.write("")
             return conteudo
     return "Nenhum manejo registrado hoje."
 
 def processar_gatilhos_inteligentes(texto):
-    """Analisa texto buscando pragas específicas para sugerir quimicos."""
-    analise_extra = ""
+    analise = ""
     texto_lower = texto.lower()
     
-    # 1. Gatilhos de Chuva/Clima
+    # Chuva
     if any(p in texto_lower for p in ["chuva", "chovendo", "volume", "água"]):
-        analise_extra += "⚠️ **ALERTA HÍDRICO:** Chuva relatada. Risco iminente de lixiviação de Nitrogênio/Potássio e asfixia radicular (anoxia).\n"
-
-    # 2. Gatilhos de Nutrição
+        analise += "⚠️ **IMPACTO DA CHUVA:** O volume de água altera o potencial osmótico do solo. "
+        analise += "1) **Lixiviação:** Nitrogênio e Potássio são lavados para longe da raiz. "
+        analise += "2) **Anoxia:** A raiz sem oxigênio para de absorver nutrientes e produzir hormônios de crescimento (Citocininas).\n\n"
+    
+    # Nutrição
     if any(p in texto_lower for p in ["adubo", "fertirrigação", "cálcio", "nitrato"]):
-        analise_extra += "🧪 **NUTRIÇÃO:** Aplicação registrada. Monitore a EC do solo para evitar salinização após a chuva.\n"
+        analise += "🧪 **ANÁLISE NUTRICIONAL:** A eficiência desta aplicação depende do VPD atual. "
+        analise += "Se VPD < 0.4, o Cálcio aplicado não subirá para o fruto. Se VPD > 1.2, evite altas concentrações salinas (EC alta).\n\n"
 
-    # 3. Gatilhos Fitossanitários (A "Farmácia")
+    # Farmácia
     encontrou_praga = False
     for praga, recomendacao in FARMACIA_AGRO.items():
         if praga in texto_lower:
-            analise_extra += f"{recomendacao}\n"
+            analise += f"{recomendacao}\n"
             encontrou_praga = True
     
     if encontrou_praga:
-        analise_extra += "⚠️ **NOTA LEGAL:** As sugestões de ativos baseiam-se na literatura da cultura. Consulte sempre um Engenheiro Agrônomo local para o receituário oficial da Bahia (ADAB).\n"
+        analise += "⚠️ *Nota:* Consulte sempre um Eng. Agrônomo para receituário local.\n"
 
-    return analise_extra if analise_extra else "✅ Operação nominal. Sem alertas críticos de interação no manejo reportado."
+    return analise if analise else "✅ Operação nominal. O manejo relatado está coerente com a estabilidade climática."
 
 def gerar_conclusao_agronomo(hoje, anotacao, dias_campo):
-    conclusao = "👨‍🔬 **PARECER TÉCNICO:**\n"
+    conclusao = "👨‍🔬 **PARECER TÉCNICO CONCLUSIVO:**\n"
     if "chuva" in anotacao.lower():
-        conclusao += "Cenário de excesso hídrico. Prioridade total para drenagem e fungicidas sistêmicos. "
+        conclusao += "O evento pluviométrico domina o manejo de hoje. A prioridade muda de 'Nutrição' para 'Drenagem e Proteção'. Risco de lixiviação exige reposição estratégica posterior. "
     elif hoje['vpd'] > 1.3:
-        conclusao += "Estresse térmico detectado. Planta em fechamento estomático. Evitar manejo que exija alta atividade metabólica. "
+        conclusao += "O fator limitante hoje é o Estresse Térmico. A planta está em modo de economia. Suspenda manejos estressantes e priorize a hidratação. "
     else:
-        conclusao += "Janela fisiológica excelente. Otimizar fertirrigação para ganho de calibre de fruto. "
+        conclusao += "As condições fisiológicas estão ótimas. A planta está receptiva a bioestimulantes e carga de frutificação. "
     
-    conclusao += f"Cultura com {dias_campo} dias: Monitorar vigor vegetativo vs. reprodutivo."
+    conclusao += f"Aos {dias_campo} dias, o foco é equilibrar a relação Fonte (Folha) x Dreno (Fruto)."
     return conclusao
 
-# --- 5. GERAÇÃO DO RELATÓRIO DINÂMICO ---
-
+# --- 5. ANÁLISE COMPLETA ---
 def analisar_expert_educativo(previsoes, anotacao_usuario):
     hoje = previsoes[0]
     total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
     dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
     
-    # Processamento Inteligente
     analise_gatilho = processar_gatilhos_inteligentes(anotacao_usuario)
     conclusao_final = gerar_conclusao_agronomo(hoje, anotacao_usuario, dias_campo)
     
-    # --- SELEÇÃO DE FRASES DINÂMICAS (Sorteio) ---
-    frase_vpd = random.choice(FRASES_DINAMICAS['vpd_alto']) if hoje['vpd'] > 1.3 else (random.choice(FRASES_DINAMICAS['vpd_ideal']) if hoje['vpd'] >= 0.4 else "⚠️ VPD muito baixo. Risco de gutação.")
+    # Sorteio de Frases Ricas
+    if hoje['vpd'] > 1.3: frase_vpd = random.choice(FRASES_VPD['alto'])
+    elif hoje['vpd'] < 0.4: frase_vpd = random.choice(FRASES_VPD['baixo'])
+    else: frase_vpd = random.choice(FRASES_VPD['ideal'])
     
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88 and p['vento'] < 6)
     risco_sanidade = 'ALTO' if horas_molhamento > 2 else 'BAIXO'
-    frase_sanidade = random.choice(FRASES_DINAMICAS['sanidade_risco']) if risco_sanidade == 'ALTO' else random.choice(FRASES_DINAMICAS['sanidade_ok'])
+    frase_sanidade = random.choice(FRASES_SANIDADE['risco']) if risco_sanidade == 'ALTO' else random.choice(FRASES_SANIDADE['seguro'])
 
-    # --- MONTAGEM DO TEXTO ---
+    # --- CORPO DO RELATÓRIO ---
     parecer = f"🚦 **DASHBOARD OPERACIONAL:**\n"
-    parecer += f"• Delta T (Pulverização): {hoje['delta_t']}°C ({'🟢 IDEAL' if 2<=hoje['delta_t']<=8 else '🔴 CUIDADO'})\n"
-    parecer += f"• VPD (Transpiração): {hoje['vpd']} kPa\n"
-    parecer += f"💡 {frase_vpd}\n\n"
+    parecer += f"• Delta T: {hoje['delta_t']}°C ({'🟢 IDEAL' if 2<=hoje['delta_t']<=8 else '🔴 CUIDADO'})\n"
+    parecer += f"• VPD: {hoje['vpd']} kPa\n"
+    parecer += f"{frase_vpd}\n\n" # Frase rica aqui
     
-    parecer += f"📝 **SEU REGISTRO DE CAMPO:**\n"
+    parecer += f"📝 **REGISTRO DE CAMPO & ANÁLISE:**\n"
     parecer += f"• Nota: \"{anotacao_usuario}\"\n"
-    parecer += f"📢 **CONSULTORIA & FARMÁCIA:**\n{analise_gatilho}\n\n"
+    parecer += f"📢 **CONSULTORIA DINÂMICA:**\n{analise_gatilho}\n\n"
 
-    parecer += f"🍄 **SANIDADE & MOLHAMENTO:**\n"
-    parecer += f"• Risco Fúngico: {risco_sanidade} ({horas_molhamento} janelas de orvalho)\n"
-    parecer += f"💡 {frase_sanidade}\n\n"
+    parecer += f"🍄 **SANIDADE VEGETAL:**\n"
+    parecer += f"• Risco: {risco_sanidade} ({horas_molhamento} janelas de orvalho)\n"
+    parecer += f"{frase_sanidade}\n\n" # Frase rica aqui
 
     gda_total = dias_campo * 14.8 
     progresso = min(round((gda_total / GDA_ALVO_COLHEITA) * 100, 1), 100)
     
-    parecer += f"🧬 **FISIOLOGIA:**\n"
-    parecer += f"• Idade: {dias_campo} dias | Safra: {progresso}% concluída\n"
-    parecer += f"🛒 **NUTRIÇÃO SUGERIDA:** "
-    if dias_campo < 90: parecer += "Foco em **Raiz e Estrutura** (P + Ca)."
-    elif dias_campo < 180: parecer += "Foco em **Vegetação** (N + Mg)."
-    else: parecer += "Foco em **Fruto e Brix** (K + B)."
+    parecer += f"🧬 **FISIOLOGIA (Relógio da Planta):**\n"
+    parecer += f"• Idade: {dias_campo} dias | Safra: {progresso}%\n"
+    parecer += f"• GDA Acumulado: {gda_total:.0f} Graus-Dia\n"
+    parecer += f"💡 **CIÊNCIA:** O acúmulo de calor (GDA) dita a velocidade das enzimas. Estamos monitorando a eficiência da conversão de energia solar em açúcares (Brix).\n\n"
+    
+    parecer += f"🛒 **NUTRIÇÃO MINERAL INTELIGENTE:**\n"
+    if dias_campo < 90:
+        parecer += "• FASE: Enraizamento e Estrutura.\n"
+        parecer += "• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n"
+        parecer += "💡 **FUNDAMENTAÇÃO:** O Fósforo é vital para gerar ATP (energia química) para o crescimento de raízes novas. O Cálcio forma os 'Pectatos' na parede celular, garantindo a firmeza futura do fruto e resistência a fungos."
+    elif dias_campo < 180:
+        parecer += "• FASE: Vegetativo e Floração.\n"
+        parecer += "• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n"
+        parecer += "💡 **FUNDAMENTAÇÃO:** O Nitrogênio é a base dos aminoácidos. O Magnésio é o átomo central da clorofila; sem ele, a planta não faz fotossíntese eficiente mesmo com sol."
+    else:
+        parecer += "• FASE: Enchimento e Maturação.\n"
+        parecer += "• FOCO: **Potássio (K)** e **Boro (B)**.\n"
+        parecer += "💡 **FUNDAMENTAÇÃO:** O Potássio regula a abertura dos estômatos e transporta açúcares das folhas para os frutos. O Boro é essencial para a germinação do pólen e pegamento da flor."
     parecer += "\n\n"
 
-    parecer += f"💧 **HÍDRICO:** Repor {total_etc:.1f} mm esta semana (ETc).\n"
+    parecer += f"💧 **MANEJO HÍDRICO (ETc):**\n"
+    parecer += f"• Reposição Real Necessária: {total_etc:.1f} mm/semana.\n"
+    parecer += f"💡 **CIÊNCIA:** ETc = Evapotranspiração da Cultura. Este valor representa exatamente a água que a planta 'suou' e precisa receber de volta para manter a turgidez celular.\n"
     
     parecer += "------------------------------------------------------------\n"
     parecer += f"{conclusao_final}\n"
@@ -169,7 +183,6 @@ def analisar_expert_educativo(previsoes, anotacao_usuario):
     return parecer, conclusao_final
 
 # --- 6. EXECUÇÃO ---
-
 def get_agro_data_ultimate():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     try:
@@ -184,7 +197,6 @@ def get_agro_data_ultimate():
         dt, vpd = calcular_delta_t_e_vpd(t, u)
         et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
         chuva = sum([data['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(data['list'])])
-        
         previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'vento': item['wind']['speed']*3.6, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
     return previsoes
 
