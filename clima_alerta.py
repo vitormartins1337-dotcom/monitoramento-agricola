@@ -18,7 +18,7 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 
-# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO ---
+# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (SEM RESUMOS) ---
 FARMACIA_AGRO = {
     'botrytis': "💊 **TRATAMENTO (Botrytis):** *Fludioxonil*, *Ciprodinil* ou *Bacillus subtilis*.",
     'antracnose': "💊 **TRATAMENTO (Antracnose):** *Azoxistrobina* + *Difenoconazol*.",
@@ -28,7 +28,7 @@ FARMACIA_AGRO = {
 
 FRASES_VPD = {
     'alto': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD ALTO > 1.3 kPa):**\nA atmosfera está drenando água excessivamente. Para evitar cavitação no xilema, a planta fechou os estômatos. \n**Consequência:** Interrupção imediata da fotossíntese (sem entrada de CO2) e travamento da absorção de Cálcio (risco de Tip Burn).",
-    'baixo': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD BAIXO < 0.4 kPa):**\nO ar está saturado. A planta não consegue transpirar. \n**Consequência:** A 'bomba hidráulica' do xilema desliga. Sem transpiração, não há fluxo de massa, ou seja, os nutrientes do solo não sobem para os tecidos apicais.",
+    'baixo': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD BAIXO < 0.4 kPa):**\nO ar está saturado. A planta não consegue transpirar. \n**Consequência:** A 'bomba hidráulica' do xilema desliga. Sem transpiração, não há fluxo de massa, ou seja, os nutrientes do solo não sobem para as folhas. Risco elevado de gutação e doenças.",
     'ideal': "✅ **ANÁLISE FÍSICA DETALHADA (VPD IDEAL):**\nTermodinâmica perfeita. A planta opera com máxima condutância estomática, transpirando e fixando carbono simultaneamente. É o momento de maior eficiência no uso da água e fertilizantes."
 }
 
@@ -79,7 +79,7 @@ def revisor_estrategico(vpd, chuva_s, texto):
     else:
         return "✅ **OPERAÇÃO NOMINAL:** Condições estáveis. Siga o manejo preventivo."
 
-# --- 5. GERAÇÃO DO LAUDO ---
+# --- 5. GERAÇÃO DO LAUDO COMPLETO ---
 def gerar_relatorio_final(previsoes, anotacao):
     hoje = previsoes[0]
     dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
@@ -96,20 +96,35 @@ def gerar_relatorio_final(previsoes, anotacao):
     elif hoje['vpd'] < 0.4: txt_vpd = FRASES_VPD['baixo']
     else: txt_vpd = FRASES_VPD['ideal']
 
+    horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88)
+
+    # --- MONTAGEM DO LAUDO ROBUSTO ---
     parecer = f"🔎 **1. CONCLUSÃO ESTRATÉGICA (Resumo):**\n{sintese}\n\n"
+    
     parecer += f"📊 **2. DADOS TÉCNICOS DO DIA:**\n• VPD: {hoje['vpd']} kPa | Delta T: {hoje['delta_t']}°C\n{txt_vpd}\n\n"
+    
     parecer += f"📝 **3. DIÁRIO DE CAMPO:**\n• \"{anotacao if anotacao else 'Sem registros'}\"\n\n"
-    parecer += f"🍄 **4. MONITORAMENTO FITOSSANITÁRIO:**\n• {sum(1 for p in previsoes if p['umidade'] > 88)} janelas de orvalho.\n💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha.\n\n"
+
+    parecer += f"🍄 **4. MONITORAMENTO FITOSSANITÁRIO:**\n"
+    parecer += f"• {horas_molhamento} janelas de orvalho (Risco {'ALTO' if horas_molhamento > 2 else 'BAIXO'}).\n"
+    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha para emitir o tubo germinativo. O monitoramento de orvalho é mais crítico que a chuva total.\n\n"
     
     parecer += f"🛒 **5. NUTRIÇÃO MINERAL SUGERIDA:**\n"
-    if dias_campo < 130:
-        parecer += "• FASE: Crescimento Vegetativo.\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n💡 **CIÊNCIA DO SOLO:** O Nitrogênio é o bloco construtor de aminoácidos. O Magnésio é o centro da clorofila."
+    if dias_campo < 45:
+        parecer += "• FASE: Enraizamento (Início).\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n"
+        parecer += "💡 **CIÊNCIA DO SOLO:** O Fósforo é o gerador de ATP (energia celular) vital para o enraizamento. O Cálcio forma os pectatos da lamela média, a 'cola' que dá firmeza às células."
+    elif dias_campo < 130:
+        parecer += "• FASE: Crescimento Vegetativo.\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n"
+        parecer += "💡 **CIÊNCIA DO SOLO:** O Nitrogênio é o bloco construtor de aminoácidos e proteínas. O Magnésio é o átomo central da molécula de clorofila; sem ele, não há conversão de luz em energia."
     else:
-        parecer += "• FASE: Frutificação.\n• FOCO: **Potássio (K)**.\n💡 **CIÊNCIA DO SOLO:** O Potássio regula a osmose e o transporte de açúcares."
+        parecer += "• FASE: Frutificação.\n• FOCO: **Potássio (K)** e **Boro (B)**.\n"
+        parecer += "💡 **CIÊNCIA DO SOLO:** O Potássio atua como regulador osmótico e transportador de fotoassimilados (açúcar) da folha para o dreno (fruto). O Boro é crucial para a viabilidade do pólen."
     
-    parecer += f"\n\n🧬 **6. FISIOLOGIA (Relógio Térmico):**\n• Idade: {dias_campo} dias | GDA: {dias_campo * 14.8:.0f}\n💡 **FUNDAMENTAÇÃO:** A conversão de luz em açúcar depende do acúmulo de calor (Graus-Dia).\n\n"
+    parecer += f"\n\n🧬 **6. FISIOLOGIA (Relógio Térmico):**\n"
+    parecer += f"• Idade: {dias_campo} dias | GDA Acumulado: {dias_campo * 14.8:.0f}\n"
+    parecer += f"💡 **FUNDAMENTAÇÃO:** Monitoramos a eficiência enzimática da planta. A conversão de luz em açúcar (Brix) depende do acúmulo de calor (Graus-Dia).\n\n"
     
-    # --- TÓPICO 7 REFORMULADO (TENDÊNCIA HÍDRICA) ---
+    # --- TÓPICO 7 ROBUSTO (HÍDRICO + TENDÊNCIA) ---
     parecer += f"💧 **7. MANEJO HÍDRICO & TENDÊNCIA (Semanal):**\n"
     parecer += f"• 🌧️ Chuva Prevista (Acumulada): {chuva_total_semana:.1f} mm\n"
     parecer += f"• 💧 Consumo Estimado da Planta (ETc): {consumo_total_semana:.1f} mm\n"
@@ -120,12 +135,19 @@ def gerar_relatorio_final(previsoes, anotacao):
         parecer += "💡 **TENDÊNCIA:** Estresse hídrico iminente. **AUMENTE** a lâmina de irrigação para manter o turgor celular.\n"
     else:
         parecer += "💡 **TENDÊNCIA:** Equilíbrio hídrico. Mantenha o cronograma de irrigação atual.\n"
+    parecer += f"💡 **EXPLICAÇÃO:** A ETc é a 'transpiração real', calculada cruzando a evaporação do ambiente com o coeficiente biológico (Kc) da planta.\n\n"
     
-    parecer += f"\n🛡️ **8. VIGILÂNCIA DE APLICAÇÃO (Delta T):**\n✅ Delta T em {hoje['delta_t']}°C. Condição ideal para pulverização.\n\n"
+    parecer += f"🛡️ **8. VIGILÂNCIA DE APLICAÇÃO (Delta T):**\n"
+    if 2 <= hoje['delta_t'] <= 8:
+        parecer += f"✅ Delta T em {hoje['delta_t']}°C. Condição ideal para pulverização. O tamanho da gota será preservado contra evaporação precoce.\n\n"
+    else:
+        parecer += f"⚠️ Delta T em {hoje['delta_t']}°C. Risco de evaporação rápida ou baixa absorção. Reavalie o uso de adjuvantes.\n\n"
+
     parecer += f"{radar}"
     
     return parecer
 
+# --- 6. EXECUÇÃO ---
 def get_agro_data():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     try:
@@ -155,6 +177,9 @@ if __name__ == "__main__":
     previsoes = get_agro_data()
     if previsoes:
         corpo = gerar_relatorio_final(previsoes, ler_atividades_usuario())
-        header = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(timezone(timedelta(hours=-3))).strftime('%d/%m/%Y %H:%M')}\n"
+        fuso = timezone(timedelta(hours=-3))
+        header = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(fuso).strftime('%d/%m/%Y %H:%M')}\n"
         header += "-"*60 + "\n"
-        enviar_email(f"💎 RELATÓRIO COMPLETO: {datetime.now(timezone(timedelta(hours=-3))).strftime('%d/%m')}", header + "\n" + corpo)
+        for p in previsoes:
+            header += f"Próximos dias | {p['temp']}°C | 🌧️ {p['chuva']}mm | 💧 {round(p['et0']*KC_ATUAL, 2)}mm\n"
+        enviar_email(f"💎 RELATÓRIO COMPLETO: {datetime.now(fuso).strftime('%d/%m')}", header + "\n" + corpo)
