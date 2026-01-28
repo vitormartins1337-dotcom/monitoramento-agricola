@@ -16,7 +16,7 @@ CIDADES_VIZINHAS = ["Mucugê, BR", "Barra da Estiva, BR", "Piatã, BR"]
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
-EMAIL_DESTINO = "vitormarrins1337@gmail.com"
+EMAIL_DESTINO = "vitormartins1337@gmail.com"
 
 # --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (PROFISSIONALISMO TOTAL) ---
 FRASES_VPD = {
