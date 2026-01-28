@@ -5,18 +5,32 @@ import math
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
-# --- CONFIGURAÇÕES ---
+# --- 1. CONFIGURAÇÕES DE ALTA PRECISÃO (GPS) ---
 MODO_TESTE = True 
 DATA_PLANTIO = datetime(2025, 11, 25) 
 KC_ATUAL = 0.75 
 FUSO_BRASIL = timezone(timedelta(hours=-3))
-CIDADE = "Ibicoara, BR"
-CIDADES_VIZINHAS = ["Mucugê, BR", "Barra da Estiva, BR", "Piatã, BR", "Cascavel, BR"]
+
+# Local Principal (Sua Fazenda em Ibicoara)
+FAZENDA_PRINCIPAL = {
+    "nome": "Ibicoara (Sede)",
+    "lat": "-13.414", 
+    "lon": "-41.285"
+}
+
+# Radar Regional (Vizinhança Georreferenciada)
+RADAR_GPS = [
+    {"nome": "Mucugê", "lat": "-13.005", "lon": "-41.371"},
+    {"nome": "Barra da Estiva", "lat": "-13.623", "lon": "-41.326"},
+    {"nome": "Piatã", "lat": "-13.154", "lon": "-41.773"},
+    {"nome": "Cascavel (Distrito)", "lat": "-13.196", "lon": "-41.445"}
+]
+
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 
-# --- MEMÓRIA ESTRATÉGICA ---
+# --- 2. MEMÓRIA ESTRATÉGICA ---
 def gerenciar_memoria(chuva_atual):
     arq = 'memoria_chuva.txt'
     chuva_ant = 0.0
@@ -27,17 +41,19 @@ def gerenciar_memoria(chuva_atual):
     with open(arq, 'w') as f: f.write(str(chuva_atual))
     return abs(chuva_atual - chuva_ant) > 3.0, chuva_ant
 
-# --- MOTOR DE CÁLCULO ---
+# --- 3. MOTOR DE CÁLCULO AGRONÔMICO ---
 def calc_agro(temp, umid):
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
     ea = es * (umid / 100)
     vpd = round(es - ea, 2)
+    # Cálculo psicrométrico simplificado para Delta T
     tw = temp * math.atan(0.151977 * (umid + 8.313659)**0.5) + \
          math.atan(temp + umid) - math.atan(umid - 1.676331) + \
          0.00391838 * (umid)**1.5 * math.atan(0.023101 * umid) - 4.686035
     dt = round(temp - tw, 1)
     return dt, vpd
 
+# --- 4. GERADOR DE LAUDO PROFISSIONAL (HTML) ---
 def gerar_conteudo_html(previsoes, anotacao, mudanca, chuva_ant):
     hoje = previsoes[0]
     hoje_dt = datetime.now(FUSO_BRASIL)
@@ -46,157 +62,146 @@ def gerar_conteudo_html(previsoes, anotacao, mudanca, chuva_ant):
     consumo_total = sum(p['et0'] * KC_ATUAL for p in previsoes)
     balanco = chuva_total - consumo_total
 
-    # Textos de Análise
-    txt_vpd = "Equilíbrio perfeito. Estômatos operando com máxima condutância." if 0.45 <= hoje['vpd'] <= 1.25 else \
-              "Risco de cavitação no xilema." if hoje['vpd'] > 1.25 else \
-              "Saturação de vapor. Fluxo de massa interrompido."
+    # Textos Técnicos Dinâmicos
+    txt_vpd = "Equilíbrio termodinâmico perfeito. Estômatos abertos e fotossíntese ativa." if 0.45 <= hoje['vpd'] <= 1.25 else \
+              "Atmosfera muito seca. Risco de fechamento estomático e cavitação." if hoje['vpd'] > 1.25 else \
+              "Atmosfera saturada. Transpiração bloqueada. Risco de doenças."
     
-    txt_dt = "Ideal para preservação da gota e redução de deriva." if 2 <= hoje['delta_t'] <= 8 else \
-             "Risco de evaporação instantânea ou baixa deposição."
-             
-    txt_balanco = "Superávit: Risco de anoxia radicular. Reduza lâmina." if balanco > 0 else \
-                  "Déficit: Estresse hídrico. Aumente a reposição."
+    txt_balanco = "Superávit Hídrico: Solo tende à saturação. Risco de asfixia radicular (anoxia)." if balanco > 0 else \
+                  "Déficit Hídrico: Demanda maior que a oferta natural. Aumente a irrigação."
 
-    # ESTILO CSS (Design Profissional)
+    # ESTILO CSS (Visual de Software)
     css = """
     <style>
-        body { font-family: Arial, sans-serif; color: #333; }
-        h2 { color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 5px; }
-        .alerta { background-color: #ffe6e6; border: 1px solid #ffcccc; padding: 10px; color: #cc0000; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th { background-color: #27ae60; color: white; padding: 10px; text-align: left; }
-        td { border: 1px solid #ddd; padding: 8px; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        .destaque { font-weight: bold; color: #2c3e50; }
-        .footer { font-size: 12px; color: #777; margin-top: 20px; text-align: center; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.6; }
+        .header { background-color: #27ae60; color: white; padding: 15px; border-radius: 5px 5px 0 0; }
+        h2 { margin: 0; font-size: 22px; }
+        .meta { font-size: 14px; opacity: 0.9; }
+        .alerta { background-color: #fff3cd; border-left: 5px solid #ffc107; padding: 15px; margin: 20px 0; color: #856404; }
+        .danger { background-color: #f8d7da; border-left: 5px solid #dc3545; color: #721c24; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { background-color: #f8f9fa; color: #2c3e50; padding: 10px; border-bottom: 2px solid #ddd; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
+        tr:nth-child(even) { background-color: #fafafa; }
+        .destaque { font-weight: bold; color: #27ae60; }
+        .radar-box { background-color: #f1f8e9; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        .footer { font-size: 11px; color: #999; margin-top: 30px; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
     </style>
     """
 
-    # CONSTRUÇÃO DO HTML
     html = f"""
     <html>
     <head>{css}</head>
     <body>
-        <h2>🏛️ LAUDO TÉCNICO AGRO-INTEL</h2>
-        <p><strong>Local:</strong> {CIDADE} | <strong>Data:</strong> {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}</p>
+        <div class="header">
+            <h2>💎 LAUDO TÉCNICO AGRO-INTEL</h2>
+            <div class="meta">📍 {FAZENDA_PRINCIPAL['nome']} (GPS: {FAZENDA_PRINCIPAL['lat']}, {FAZENDA_PRINCIPAL['lon']}) | 📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}</div>
+        </div>
     """
 
     if mudanca:
         html += f"""
-        <div class="alerta">
-            ⚠️ ALERTA: VOLATILIDADE DETECTADA<br>
-            Previsão anterior: {chuva_ant:.1f}mm | Atual: {chuva_total:.1f}mm. Ajuste operacional requerido.
+        <div class="alerta danger">
+            ⚠️ <strong>ALERTA DE VOLATILIDADE CLIMÁTICA</strong><br>
+            A previsão de chuva acumulada mudou bruscamente de <strong>{chuva_ant:.1f}mm</strong> para <strong>{chuva_total:.1f}mm</strong> nas últimas horas. Revise o planejamento de campo.
         </div>
         """
 
-    # Tabela de Previsão
-    html += "<h3>📅 Previsão Semanal (Microclima)</h3><table><tr><th>Data</th><th>Temp</th><th>Chuva</th><th>Consumo (ETc)</th></tr>"
+    # Tabela 1: Previsão Semanal
+    html += "<h3>📅 Microclima Semanal (Ibicoara)</h3><table><tr><th>Data</th><th>Temp</th><th>Chuva</th><th>Consumo (ETc)</th></tr>"
     for p in previsoes:
         html += f"<tr><td>{p['data']}</td><td>{p['temp']}°C</td><td>{p['chuva']}mm</td><td>{round(p['et0']*KC_ATUAL, 2)}mm</td></tr>"
     html += "</table>"
 
     # Diário
-    html += f"<h3>📝 Diário de Campo</h3><p><em>\"{anotacao if anotacao else 'Sem registros manuais.'}\"</em></p>"
+    html += f"<h3>📝 Diário de Campo</h3><div style='background: #eee; padding: 10px; border-left: 3px solid #999;'><em>\"{anotacao if anotacao else 'Sem apontamentos manuais.'}\"</em></div>"
 
-    # Tabela de Análise Técnica
+    # Tabela 2: Análise Técnica Profunda
     html += """
-    <h3>🔬 Diagnóstico e Fundamentação</h3>
+    <h3>🔬 Diagnóstico Fisiológico & Estratégico</h3>
     <table>
-        <tr>
-            <th style="width: 25%;">TÓPICO</th>
-            <th style="width: 20%;">VALOR</th>
-            <th>DIAGNÓSTICO & CIÊNCIA</th>
-        </tr>
+        <tr><th width="30%">PARÂMETRO</th><th width="20%">VALOR</th><th>INTERPRETAÇÃO TÉCNICA</th></tr>
     """
     html += f"""
-        <tr>
-            <td class="destaque">1. VPD (Termodinâmica)</td>
-            <td>{hoje['vpd']} kPa</td>
-            <td>{txt_vpd}</td>
-        </tr>
-        <tr>
-            <td class="destaque">2. Delta T (Aplicação)</td>
-            <td>{hoje['delta_t']} °C</td>
-            <td>{txt_dt}</td>
-        </tr>
-        <tr>
-            <td class="destaque">3. Balanço Hídrico (7d)</td>
-            <td>{balanco:.1f} mm</td>
-            <td>{txt_balanco}</td>
-        </tr>
-        <tr>
-            <td class="destaque">4. Risco Sanitário</td>
-            <td>{sum(1 for p in previsoes if p['umid'] > 88)} Janelas</td>
-            <td>{'Risco Alto: Umidade favorável ao tubo germinativo.' if sum(1 for p in previsoes if p['umid'] > 88) > 2 else 'Estabilidade: Baixa pressão de inóculo.'}</td>
-        </tr>
-        <tr>
-            <td class="destaque">5. Nutrição (Fisiologia)</td>
-            <td>Vegetativo</td>
-            <td><strong>Magnésio (Mg):</strong> Centro da Clorofila (ATP). <strong>Nitrogênio (N):</strong> Proteínas estruturais.</td>
-        </tr>
-        <tr>
-            <td class="destaque">6. Relógio Térmico</td>
-            <td>{dias * 14.8:.0f} GDA</td>
-            <td>Conversão de fotoassimilados em Brix depende do acúmulo térmico.</td>
-        </tr>
+        <tr><td class="destaque">1. Termodinâmica (VPD)</td><td>{hoje['vpd']} kPa</td><td>{txt_vpd}</td></tr>
+        <tr><td class="destaque">2. Pulverização (Delta T)</td><td>{hoje['delta_t']} °C</td><td>{'✅ Ideal. Gota protegida contra evaporação.' if 2 <= hoje['delta_t'] <= 8 else '⚠️ Risco. Evite pulverizar sem adjuvantes.'}</td></tr>
+        <tr><td class="destaque">3. Balanço Hídrico (7d)</td><td>{balanco:.1f} mm</td><td>{txt_balanco}</td></tr>
+        <tr><td class="destaque">4. Pressão Sanitária</td><td>{sum(1 for p in previsoes if p['umid'] > 88)} Janelas</td><td>{'🚨 ALTO RISCO. Condições ideais para germinação de esporos fúngicos.' if sum(1 for p in previsoes if p['umid'] > 88) > 2 else '✅ Baixo Risco. Ausência de molhamento foliar contínuo.'}</td></tr>
+        <tr><td class="destaque">5. Nutrição (Fase)</td><td>Vegetativo</td><td><strong>Foco: N + Mg.</strong> Nitrogênio para síntese proteica e Magnésio para o centro da molécula de Clorofila.</td></tr>
+        <tr><td class="destaque">6. Maturação (GDA)</td><td>{dias * 14.8:.0f} GDA</td><td>Acúmulo térmico definindo a taxa de conversão enzimática de açúcares.</td></tr>
     </table>
     """
 
-    # Radar
-    html += "<h3>🛰️ Radar Regional</h3><ul>"
-    for v in CIDADES_VIZINHAS:
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={v}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
+    # Radar Regional GPS
+    html += "<div class='radar-box'><h3>🛰️ Radar Regional (Georreferenciado)</h3><ul>"
+    for local in RADAR_GPS:
+        url = f"https://api.openweathermap.org/data/2.5/weather?lat={local['lat']}&lon={local['lon']}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
         try:
             r = requests.get(url).json()
-            alerta_vizinho = "🚨" if r.get('rain') else "✅"
-            html += f"<li><strong>{v.split(',')[0]}:</strong> {alerta_vizinho} {r['weather'][0]['description']} ({r['main']['temp']}°C)</li>"
+            icone = "🌧️" if "chuva" in r['weather'][0]['description'] or r.get('rain') else "🌤️"
+            html += f"<li><strong>{local['nome']}:</strong> {icone} {r['weather'][0]['description'].capitalize()} ({r['main']['temp']}°C)</li>"
         except: continue
-    html += "</ul>"
+    html += "</ul><small><em>*Dados obtidos via satélite nas coordenadas exatas de cada localidade.</em></small></div>"
     
-    html += "<div class='footer'>Gerado automaticamente pelo Sistema Agro-Intel v7.0</div></body></html>"
+    html += "<div class='footer'>Sistema Agro-Intel v8.0 | Precision Agriculture Module</div></body></html>"
     return html
 
-def get_data():
-    url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
-    r = requests.get(url).json()
-    previsoes = []
-    for i in range(0, 40, 8):
-        item = r['list'][i]
-        dt, vpd = calc_agro(item['main']['temp'], item['main']['humidity'])
-        et0 = 0.0023 * (item['main']['temp'] + 17.8) * (item['main']['temp'] ** 0.5) * 0.408
-        chuva = sum([r['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(r['list'])])
-        previsoes.append({
-            'data': datetime.fromtimestamp(item['dt'], tz=timezone.utc).astimezone(FUSO_BRASIL).strftime('%d/%m'),
-            'temp': item['main']['temp'], 'umid': item['main']['humidity'], 'vpd': vpd, 'delta_t': dt, 'chuva': round(chuva, 1), 'et0': round(et0, 2)
-        })
-    return previsoes
+# --- 5. EXECUÇÃO MESTRA ---
+def get_agro_data():
+    # Busca por coordenadas da FAZENDA_PRINCIPAL
+    url = f"https://api.openweathermap.org/data/2.5/forecast?lat={FAZENDA_PRINCIPAL['lat']}&lon={FAZENDA_PRINCIPAL['lon']}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
+    try:
+        r = requests.get(url).json()
+        previsoes = []
+        for i in range(0, 40, 8):
+            item = r['list'][i]
+            dt, vpd = calc_agro(item['main']['temp'], item['main']['humidity'])
+            et0 = 0.0023 * (item['main']['temp'] + 17.8) * (item['main']['temp'] ** 0.5) * 0.408
+            chuva = sum([r['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(r['list'])])
+            
+            # Formatação de Data Ajustada
+            data_obj = datetime.fromtimestamp(item['dt'], tz=timezone.utc).astimezone(FUSO_BRASIL)
+            previsoes.append({
+                'data': data_obj.strftime('%d/%m'),
+                'temp': item['main']['temp'], 'umid': item['main']['humidity'], 'vpd': vpd, 'delta_t': dt, 'chuva': round(chuva, 1), 'et0': round(et0, 2)
+            })
+        return previsoes
+    except Exception as e:
+        print(f"Erro na API: {e}")
+        return []
 
 if __name__ == "__main__":
     try:
-        prev = get_data()
-        c_tot = sum(p['chuva'] for p in prev)
-        mudou, c_ant = gerenciar_memoria(c_tot)
-        
-        # Leitura segura do arquivo
-        if os.path.exists('input_atividades.txt'):
-             with open('input_atividades.txt', 'r', encoding='utf-8') as f: anot = f.read().strip()
-        else: anot = ""
-        
-        html_content = gerar_conteudo_html(prev, anot, mudou, c_ant)
-        
-        assunto = f"{'⚠️ ALERTA: MUDANÇA' if mudou else '💎 LAUDO'} - {CIDADE} ({datetime.now(FUSO_BRASIL).strftime('%d/%m')})"
-        
-        msg = EmailMessage()
-        msg['Subject'] = assunto
-        msg['From'] = EMAIL_DESTINO
-        msg['To'] = EMAIL_DESTINO
-        msg.set_content("Seu cliente de e-mail não suporta HTML.") # Fallback
-        msg.add_alternative(html_content, subtype='html') # O segredo está aqui
-        
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-            smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
-            smtp.send_message(msg)
+        prev = get_agro_data()
+        if prev:
+            c_tot = sum(p['chuva'] for p in prev)
+            mudou, c_ant = gerenciar_memoria(c_tot)
             
-        if anot and not MODO_TESTE:
-            with open('input_atividades.txt', 'w') as f: f.write("")
-    except Exception as e: print(f"Erro: {e}")
+            # Leitura do Diário
+            anot = ""
+            if os.path.exists('input_atividades.txt'):
+                with open('input_atividades.txt', 'r', encoding='utf-8') as f: anot = f.read().strip()
+            
+            html_content = gerar_conteudo_html(prev, anot, mudou, c_ant)
+            
+            # Definição do Assunto
+            assunto_base = "⚠️ ALERTA: MUDANÇA CLIMÁTICA" if mudou else "💎 LAUDO TÉCNICO DIÁRIO"
+            assunto = f"{assunto_base} - {FAZENDA_PRINCIPAL['nome']} ({datetime.now(FUSO_BRASIL).strftime('%d/%m')})"
+            
+            # Envio
+            msg = EmailMessage()
+            msg['Subject'] = assunto
+            msg['From'] = EMAIL_DESTINO
+            msg['To'] = EMAIL_DESTINO
+            msg.set_content("Visualização disponível apenas em HTML.")
+            msg.add_alternative(html_content, subtype='html')
+            
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+                smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
+                smtp.send_message(msg)
+                print("Laudo GPS enviado com sucesso.")
+                
+            # Limpeza
+            if anot and not MODO_TESTE:
+                with open('input_atividades.txt', 'w') as f: f.write("")
+    except Exception as e: print(f"Erro Crítico: {e}")
