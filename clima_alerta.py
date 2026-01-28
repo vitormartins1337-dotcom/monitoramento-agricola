@@ -64,38 +64,35 @@ def processar_analise_profissional(texto, vpd_atual):
     texto = texto.lower()
     analise = ""
     
-    # GATILHO 1: Chuva e Hídrico
+    # GATILHO 1: Chuva e Hídrico (Mantido)
     if any(p in texto for p in ["chuva", "chovendo", "volume", "água", "molhou"]):
-        analise += "⛈️ **IMPACTO HÍDRICO E DE SOLOS:**\n"
-        analise += "   • O seu relato de chuva sobrepõe a previsão do sensor. O solo está em Saturação.\n"
-        analise += "   • **Risco Químico:** Lixiviação (lavagem) de Nitrogênio e Potássio para camadas profundas.\n"
-        analise += "   • **Risco Físico:** Anoxia Radicular. A água ocupou os macroporos, expulsando o oxigênio.\n\n"
+        analise += "⛈️ **IMPACTO HÍDRICO CRÍTICO:**\n"
+        analise += "   • O solo está saturado pela chuva relatada. A planta entra em estresse por anoxia (falta de ar).\n"
+        analise += "   • **Ação:** Suspenda qualquer irrigação programada. Monitore drenagem.\n\n"
 
-    # GATILHO 2: Nutrição
-    if any(p in texto for p in ["adubo", "fertirrigação", "cálcio", "potássio", "nitrato", "map"]):
-        analise += "🧪 **EFICIÊNCIA NUTRICIONAL:**\n"
-        if "não" in texto and ("chuva" in texto or "volume" in texto):
-             analise += "   • **Decisão Técnica Correta:** Suspender a fertirrigação em solo saturado evitou o desperdício.\n"
-        elif "chuva" in texto:
-             analise += "   • **Alerta:** A chuva pós-aplicação provavelmente lixiviou parte do produto.\n"
-        elif vpd_atual < 0.4:
-             analise += "   • **Alerta:** Com VPD baixo, a planta não transloca Cálcio/Boro eficientemente.\n\n"
+    # GATILHO 2: Nutrição (Mantido)
+    if any(p in texto for p in ["adubo", "fertirrigação", "cálcio", "potássio", "nitrato"]):
+        if vpd_atual < 0.4:
+             analise += "⚠️ **ALERTA DE INEFICIÊNCIA:**\n   • Você aplicou nutrição, mas o VPD está muito baixo (<0.4). A planta NÃO vai absorver isso hoje. O produto ficará salinizando o solo.\n\n"
+        else:
+             analise += "🧪 **EFICIÊNCIA NUTRICIONAL:**\n   • Aplicação registrada. Monitore a EC do solo.\n\n"
 
-    # GATILHO 3: Farmácia
-    encontrou_praga = False
+    # GATILHO 3: Pragas (Mantido)
     for praga, protocolo in FARMACIA_AGRO.items():
         if praga in texto:
             analise += f"{protocolo}\n"
-            encontrou_praga = True
-    
-    if encontrou_praga:
-        analise += "   ⚠️ *Nota:* Consulte sempre um Eng. Agrônomo local.\n\n"
 
-    if not analise:
-        analise = "✅ **OPERAÇÃO NOMINAL:** O manejo relatado segue o padrão preventivo.\n"
+    # --- AQUI ESTÁ A MELHORIA (PROATIVIDADE) ---
+    if not analise: # Se você não escreveu nada...
+        if vpd_atual < 0.4:
+            analise = "🛑 **DIRETRIZ DO DIA (VPD CRÍTICO):**\n   • O ar está saturado (0.13 kPa). A planta desligou o metabolismo.\n   • **NÃO IRRIGUE** hoje, mesmo que esteja seco. A planta não tem capacidade de puxar água.\n   • **NÃO PULVERIZE** sistêmicos, pois não circularão na seiva.\n"
+        elif vpd_atual > 1.4:
+            analise = "🔥 **DIRETRIZ DO DIA (ESTRESSE TÉRMICO):**\n   • Ar muito seco. Irrigação deve ser curta e frequente (pulsada) apenas para resfriar a planta.\n"
+        else:
+            analise = "✅ **OPERAÇÃO NOMINAL:** Condições climáticas estáveis. Siga o cronograma de manejo padrão.\n"
         
     return analise
-
+   
 # --- 6. GERAÇÃO DO RELATÓRIO ---
 def gerar_relatorio_final(previsoes, anotacao_usuario):
     hoje = previsoes[0]
@@ -114,33 +111,30 @@ def gerar_relatorio_final(previsoes, anotacao_usuario):
     risco_sanidade = 'ALTO' if horas_molhamento > 2 else 'BAIXO'
 
     parecer = f"🚦 **DASHBOARD OPERACIONAL:**\n"
-    parecer += f"• Delta T (Pulverização): {hoje['delta_t']}°C | VPD: {hoje['vpd']} kPa\n"
+    parecer += f"• Delta T: {hoje['delta_t']}°C | VPD: {hoje['vpd']} kPa\n"
     parecer += f"{txt_vpd}\n\n"
     
-    parecer += f"📝 **REGISTRO DE CAMPO & CONSULTORIA:**\n"
-    parecer += f"• Seu Relato: \"{anotacao_usuario}\"\n"
+    parecer += f"📝 **DIÁRIO & CONSULTORIA:**\n"
+    parecer += f"• Relato: \"{anotacao_usuario}\"\n"
     parecer += f"👨‍🔬 **PARECER TÉCNICO:**\n{parecer_especialista}\n"
     
-    parecer += f"🍄 **MONITORAMENTO FITOSSANITÁRIO:**\n"
-    parecer += f"• Risco Fúngico: {risco_sanidade} ({horas_molhamento} janelas de orvalho previstas)\n"
-    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha. O monitoramento de orvalho é mais crítico que a chuva total.\n\n"
+    parecer += f"🍄 **SANIDADE ({risco_sanidade}):**\n"
+    parecer += f"• {horas_molhamento} janelas de orvalho. Atenção máxima a *Botrytis*.\n\n"
 
-    parecer += f"🧬 **FISIOLOGIA (Relógio Térmico):**\n"
-    parecer += f"• Idade Real: {dias_campo} dias | GDA Acumulado: {gda_total:.0f} (+{gda_hoje:.1f} hoje)\n"
-    parecer += f"💡 **FUNDAMENTAÇÃO:** A conversão de luz em açúcar (Brix) depende do acúmulo de Graus-Dia.\n\n"
+    parecer += f"🧬 **FISIOLOGIA ({dias_campo} dias):**\n"
+    parecer += f"• GDA Acumulado: {gda_total:.0f} (+{gda_hoje:.1f} hoje)\n"
 
-    parecer += f"🛒 **SUGESTÃO DE NUTRIÇÃO MINERAL:**\n"
-    if dias_campo < 90:
-        parecer += "• FASE: Estabelecimento Radicular.\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n💡 **CIÊNCIA DO SOLO:** O Fósforo é o gerador de ATP (energia celular). O Cálcio forma os pectatos (firmeza)."
-    elif dias_campo < 180:
-        parecer += "• FASE: Crescimento Vegetativo.\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n💡 **CIÊNCIA DO SOLO:** Nitrogênio gera proteínas. Magnésio é o centro da clorofila."
+    # --- CORREÇÃO DAS FASES (MAIS REALISTAS) ---
+    parecer += f"🛒 **NUTRIÇÃO MINERAL:**\n"
+    if dias_campo < 45: # Reduzi de 90 para 45 dias
+        parecer += "• FASE: Enraizamento (Início).\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n💡 **CIÊNCIA:** Energia (ATP) para raízes novas."
+    elif dias_campo < 130: # Reduzi de 180 para 130
+        parecer += "• FASE: Crescimento Vegetativo (Brotação).\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n💡 **CIÊNCIA:** O Nitrogênio expande a área foliar e o Magnésio turbina a fotossíntese."
     else:
-        parecer += "• FASE: Enchimento e Maturação.\n• FOCO: **Potássio (K)** e **Boro (B)**.\n💡 **CIÊNCIA DO SOLO:** O Potássio transporta açúcares. O Boro viabiliza o tubo polínico."
+        parecer += "• FASE: Pré-Florada/Frutificação.\n• FOCO: **Potássio (K)** e **Boro (B)**.\n💡 **CIÊNCIA:** Potássio para transporte de açúcar e Boro para o pólen."
     parecer += "\n\n"
 
-    parecer += f"💧 **MANEJO HÍDRICO DE PRECISÃO:**\n"
-    parecer += f"• Reposição Real (ETc): {total_etc:.1f} mm para a semana.\n"
-    parecer += f"💡 **EXPLICAÇÃO:** 'Transpiração real' da cultura (ET0 x Kc {KC_ATUAL}).\n"
+    parecer += f"💧 **HÍDRICO:** Reposição de {total_etc:.1f} mm/semana (ETc).\n"
     
     return parecer
 
