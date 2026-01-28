@@ -3,7 +3,6 @@ import os
 import smtplib
 import math
 import csv
-import random
 import google.generativeai as genai
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
@@ -20,35 +19,32 @@ GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 
-# Configuração IA (Usando versão estável 1.5-flash)
+# --- 2. CONFIGURAÇÃO IA COM REDUNDÂNCIA ---
 MODELO_IA = None
 if GEMINI_KEY:
     try:
         genai.configure(api_key=GEMINI_KEY)
-        MODELO_IA = genai.GenerativeModel('gemini-1.5-flash')
-    except:
-        print("Erro ao configurar IA.")
+        # Tenta configurar. O modelo será chamado na função de consulta.
+    except Exception as e:
+        print(f"Erro Configuração IA: {e}")
 
-# --- 2. MOTOR DE BACKUP (GATILHOS CLÁSSICOS) ---
-# Se a IA falhar, usamos isso aqui para não ficar "fraco"
+# --- 3. MOTOR DE BACKUP (SEGURANÇA) ---
 def backup_inteligencia_classica(texto):
     texto = texto.lower()
-    analise = "⚠️ **ANÁLISE DE BACKUP (IA OFFLINE):**\n"
+    analise = "⚠️ **ANÁLISE DE BACKUP (IA OFFLINE - REVISE SUA API KEY):**\n"
     
     if any(p in texto for p in ["chuva", "água", "molhou"]):
-        analise += "• Você relatou chuva não prevista. Isso anula o dado do sensor. Risco Imediato: Lixiviação de Nitrogênio/Potássio e Anoxia (falta de ar na raiz).\n"
-    
-    if any(p in texto for p in ["adubo", "fertirrigação", "cálcio"]):
-        analise += "• Sobre a nutrição: Se choveu muito após a aplicação, considere que parte foi perdida (lavada). Monitore sinais de deficiência nos próximos 3 dias.\n"
-        
+        analise += "• O sistema detectou seu relato de chuva. Risco Imediato: Lixiviação de Nitrogênio/Potássio e Anoxia.\n"
+    if any(p in texto for p in ["adubo", "fertirrigação"]):
+        analise += "• Se choveu após a aplicação, considere perda de nutrientes.\n"
     if "não" in texto and "fertirrigação" in texto:
-        analise += "• Decisão correta de suspender a fertirrigação. Com o solo encharcado, a planta não absorveria e apenas salinizaria o solo.\n"
+        analise += "• Decisão correta de suspender a fertirrigação para evitar salinização.\n"
 
-    if analise == "⚠️ **ANÁLISE DE BACKUP (IA OFFLINE):**\n":
+    if analise == "⚠️ **ANÁLISE DE BACKUP (IA OFFLINE - REVISE SUA API KEY):**\n":
         return "Operação nominal. Acompanhe o VPD."
     return analise
 
-# --- 3. CÁLCULOS ---
+# --- 4. CÁLCULOS ---
 def calcular_delta_t_e_vpd(temp, umidade):
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
     ea = es * (umidade / 100)
@@ -59,7 +55,7 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-# --- 4. LEITURA ---
+# --- 5. LEITURA ---
 def ler_atividades_usuario():
     arquivo_input = 'input_atividades.txt'
     if os.path.exists(arquivo_input):
@@ -70,37 +66,32 @@ def ler_atividades_usuario():
             return conteudo
     return "Nenhum manejo registrado hoje."
 
-# --- 5. INTELIGÊNCIA HÍBRIDA ---
+# --- 6. INTELIGÊNCIA ---
 def consultar_ia_agronomica(previsoes, anotacao_usuario, dias_campo):
     hoje = previsoes[0]
-    
-    # Prompt agressivo para confiar no usuário
     prompt = f"""
     Você é um Engenheiro Agrônomo Sênior.
-    
-    CONFLITO DE DADOS (IMPORTANTE):
-    - O sensor diz: Chuva {hoje['chuva']}mm.
-    - O produtor diz: "{anotacao_usuario}"
-    
-    ORDEM: Se o produtor disse que choveu, IGNORE o sensor e considere CHUVA FORTE.
-    
-    TAREFA:
-    Analise a situação. Se choveu e ele não fertirrigou, parabenize a decisão técnica (evitou lixiviação).
-    Se ele aplicou algo e choveu, avise do prejuízo.
-    Explique tecnicamente (lixiviação, anoxia, VPD).
-    Seja curto e direto.
+    CONFLITO DE DADOS: Sensor diz chuva {hoje['chuva']}mm. Produtor diz: "{anotacao_usuario}".
+    REGRA: Se o produtor diz que choveu, acredite nele.
+    TAREFA: Analise o manejo feito vs clima real. Seja curto, direto e técnico.
     """
     
-    try:
-        if not MODELO_IA: raise Exception("IA não configurada")
-        resposta = MODELO_IA.generate_content(prompt)
-        return resposta.text
-    except Exception as e:
-        print(f"⚠️ FALHA NA IA: {e} -> Usando Backup Clássico.")
-        # AQUI ESTÁ A CORREÇÃO: Chama o backup inteligente em vez da frase vazia
-        return backup_inteligencia_classica(anotacao_usuario)
+    # Tenta Modelo Novo, se falhar, tenta o Antigo
+    if GEMINI_KEY:
+        modelos_tentativa = ['gemini-1.5-flash', 'gemini-pro']
+        for nome_modelo in modelos_tentativa:
+            try:
+                model = genai.GenerativeModel(nome_modelo)
+                resposta = model.generate_content(prompt)
+                return resposta.text # Se der certo, retorna e sai
+            except Exception as e:
+                print(f"Falha no modelo {nome_modelo}: {e}")
+                continue # Tenta o próximo
+    
+    # Se tudo falhar:
+    return backup_inteligencia_classica(anotacao_usuario)
 
-# --- 6. RELATÓRIO ---
+# --- 7. RELATÓRIO ---
 def analisar_expert_educativo(previsoes, anotacao_usuario):
     hoje = previsoes[0]
     total_etc = sum(p['et0'] * KC_ATUAL for p in previsoes)
@@ -108,12 +99,11 @@ def analisar_expert_educativo(previsoes, anotacao_usuario):
     
     parecer_dinamico = consultar_ia_agronomica(previsoes, anotacao_usuario, dias_campo)
     
-    # Frases VPD Fixas
-    if hoje['vpd'] > 1.3: txt_vpd = "⚠️ **ANÁLISE FÍSICA (VPD ALTO):** Ar seco. Fechamento estomático. Risco de Tip Burn (falta de Ca)."
+    # Textos Científicos Fixos
+    if hoje['vpd'] > 1.3: txt_vpd = "⚠️ **ANÁLISE FÍSICA (VPD ALTO):** Ar seco. Fechamento estomático. Risco de Tip Burn."
     elif hoje['vpd'] < 0.4: txt_vpd = "⚠️ **ANÁLISE FÍSICA (VPD BAIXO):** Ar saturado. Planta não transpira. Nutriente não sobe. Risco de doenças."
     else: txt_vpd = "✅ **ANÁLISE FÍSICA (VPD IDEAL):** Máxima eficiência fotossintética e nutricional."
 
-    gda_total = dias_campo * 14.8 
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88 and p['vento'] < 6)
     risco_sanidade = 'ALTO' if horas_molhamento > 2 else 'BAIXO'
 
@@ -138,7 +128,7 @@ def analisar_expert_educativo(previsoes, anotacao_usuario):
     
     return parecer, parecer_dinamico
 
-# --- 7. EXECUÇÃO ---
+# --- 8. EXECUÇÃO ---
 def get_agro_data_ultimate():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     try:
