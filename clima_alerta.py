@@ -15,7 +15,7 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 
-# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (FIXO) ---
+# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (FIEL À SUA BASE) ---
 FARMACIA_AGRO = {
     'botrytis': "💊 **TRATAMENTO (Botrytis):** *Fludioxonil*, *Ciprodinil* ou *Bacillus subtilis*.",
     'antracnose': "💊 **TRATAMENTO (Antracnose):** *Azoxistrobina* + *Difenoconazol*.",
@@ -46,10 +46,12 @@ def ler_atividades_usuario():
     if os.path.exists(arquivo_input):
         with open(arquivo_input, 'r', encoding='utf-8') as f:
             conteudo = f.read().strip()
-        if conteudo and conteudo != "Início do caderno de campo":
-            # Limpa o input após a leitura para o próximo dia
+        
+        # Só limpa o arquivo no relatório da manhã (05h às 08h)
+        hora = datetime.now(FUSO_BRASIL).hour
+        if (5 <= hora <= 8) and conteudo and conteudo != "Início do caderno de campo":
             with open(arquivo_input, 'w', encoding='utf-8') as f: f.write("")
-            return conteudo
+        return conteudo
     return ""
 
 # --- 5. O CÉREBRO (DECISOR CRUZADO) ---
@@ -74,7 +76,7 @@ def revisor_estrategico(vpd, chuva_sensor, texto_usuario):
     else:
         return "✅ **OPERAÇÃO NOMINAL:** Condições estáveis. Siga o manejo preventivo."
 
-# --- 6. GERAÇÃO DO RELATÓRIO ---
+# --- 6. GERAÇÃO DO RELATÓRIO COMPLETO ---
 def gerar_relatorio_final(previsoes, anotacao_usuario):
     hoje = previsoes[0]
     dias_campo = (datetime.now(FUSO_BRASIL).date() - DATA_PLANTIO.date()).days
@@ -89,57 +91,56 @@ def gerar_relatorio_final(previsoes, anotacao_usuario):
     
     parecer = f"🔎 **CONCLUSÃO ESTRATÉGICA (Resumo):**\n"
     parecer += f"{sintese}\n\n"
-    
-    parecer += f"📊 **DADOS TÉCNICOS:**\n"
-    parecer += f"• VPD: {hoje['vpd']} kPa | Delta T: {hoje['delta_t']}°C\n"
-    parecer += f"{txt_vpd}\n\n"
-    
-    parecer += f"📝 **DIÁRIO DE CAMPO:**\n"
-    parecer += f"• \"{anotacao_usuario if anotacao_usuario else 'Sem registros'}\"\n\n"
-
-    parecer += f"🍄 **MONITORAMENTO FITOSSANITÁRIO:**\n"
-    parecer += f"• {horas_molhamento} janelas de orvalho (Risco {'ALTO' if horas_molhamento > 2 else 'BAIXO'}).\n"
-    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha. O monitoramento de orvalho é mais crítico que a chuva total.\n\n"
+    parecer += f"📊 **DADOS TÉCNICOS:**\n• VPD: {hoje['vpd']} kPa | Delta T: {hoje['delta_t']}°C\n{txt_vpd}\n\n"
+    parecer += f"📝 **DIÁRIO DE CAMPO:**\n• \"{anotacao_usuario if anotacao_usuario else 'Sem registros'}\"\n\n"
+    parecer += f"🍄 **MONITORAMENTO FITOSSANITÁRIO:**\n• {horas_molhamento} janelas de orvalho (Risco {'ALTO' if horas_molhamento > 2 else 'BAIXO'}).\n"
+    parecer += f"💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha.\n\n"
     
     parecer += f"🛒 **NUTRIÇÃO MINERAL SUGERIDA:**\n"
     if dias_campo < 45:
-        parecer += "• FASE: Enraizamento (Início).\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n"
-        parecer += "💡 **CIÊNCIA DO SOLO:** O Fósforo é o gerador de ATP (energia celular) vital para o enraizamento. O Cálcio forma os pectatos da lamela média, a 'cola' que dá firmeza às células."
+        parecer += "• FASE: Enraizamento (Início).\n• FOCO: **Fósforo (P)** e **Cálcio (Ca)**.\n💡 **CIÊNCIA DO SOLO:** P = ATP (energia). Ca = Pectatos (firmeza)."
     elif dias_campo < 130:
-        parecer += "• FASE: Crescimento Vegetativo.\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n"
-        parecer += "💡 **CIÊNCIA DO SOLO:** O Nitrogênio é o bloco construtor de aminoácidos e proteínas. O Magnésio é o átomo central da molécula de clorofila; sem ele, não há conversão de luz em energia."
+        parecer += "• FASE: Crescimento Vegetativo.\n• FOCO: **Nitrogênio (N)** e **Magnésio (Mg)**.\n💡 **CIÊNCIA DO SOLO:** N = Aminoácidos. Mg = Centro da Clorofila."
     else:
-        parecer += "• FASE: Frutificação.\n• FOCO: **Potássio (K)** e **Boro (B)**.\n"
-        parecer += "💡 **CIÊNCIA DO SOLO:** O Potássio atua como regulador osmótico e transportador de fotoassimilados (açúcar) da folha para o dreno (fruto). O Boro é crucial para a viabilidade do pólen."
-    parecer += "\n\n"
+        parecer += "• FASE: Frutificação.\n• FOCO: **Potássio (K)** e **Boro (B)**.\n💡 **CIÊNCIA DO SOLO:** K = Transporte de açúcares. B = Viabilidade do pólen."
     
-    parecer += f"🧬 **FISIOLOGIA (Relógio Térmico):**\n"
-    parecer += f"• Idade: {dias_campo} dias | GDA Acumulado: {gda_total:.0f}\n"
-    parecer += f"💡 **FUNDAMENTAÇÃO:** Monitoramos a eficiência enzimática da planta. A conversão de luz em açúcar (Brix) depende do acúmulo de calor (Graus-Dia).\n\n"
-    
-    parecer += f"💧 **MANEJO HÍDRICO (ETc):**\n"
-    parecer += f"• Reposição Real: {sum(p['et0']*KC_ATUAL for p in previsoes):.1f} mm/semana.\n"
-    parecer += f"💡 **EXPLICAÇÃO:** É a 'transpiração real', calculada cruzando a evaporação do ambiente com o coeficiente biológico (Kc) da planta.\n"
-    
+    parecer += f"\n\n🧬 **FISIOLOGIA:** Idade {dias_campo} dias | GDA: {gda_total:.0f}\n"
+    parecer += f"💧 **HÍDRICO:** Reposição de {sum(p['et0']*KC_ATUAL for p in previsoes):.1f} mm/semana.\n"
     return parecer
 
-# --- 7. EXECUÇÃO ---
+# --- 7. NOVA FUNÇÃO: VIGILÂNCIA DE MUDANÇA BRUSCA ---
+def verificar_mudanca_brusca(previsoes):
+    # Analisa as próximas 6 horas
+    proximas = previsoes[:2]
+    chuva_imediata = sum(p['chuva'] for p in proximas)
+    vento_max = max(p['vento'] for p in proximas)
+    
+    if chuva_imediata > 3.0 or vento_max > 22.0:
+        alerta = f"🚨 **ALERTA DE MUDANÇA BRUSCA DE TEMPO**\n\n"
+        alerta += f"O sistema de vigilância detectou condições críticas não previstas:\n"
+        alerta += f"• Chuva Iminente: {chuva_imediata} mm\n"
+        alerta += f"• Rajadas de Vento: {vento_max} km/h\n\n"
+        alerta += "⚠️ **RECOMENDAÇÃO:** Se planejava pulverizar ou fertirrigar agora, REAVALIE IMEDIATAMENTE."
+        enviar_email(f"🚨 ALERTA URGENTE: {datetime.now(FUSO_BRASIL).strftime('%H:%M')}", alerta)
+    else:
+        print("✅ Vigilância: Sem alterações críticas.")
+
+# --- 8. EXECUÇÃO ---
 def get_agro_data_ultimate():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     try:
         response = requests.get(url); response.raise_for_status()
         data = response.json()
+        previsoes = []
+        for i in range(0, min(40, len(data['list'])), 8):
+            item = data['list'][i]
+            t, u = item['main']['temp'], item['main']['humidity']
+            dt, vpd = calcular_delta_t_e_vpd(t, u)
+            et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
+            chuva = sum([data['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(data['list'])])
+            previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'vento': item['wind']['speed']*3.6, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
+        return previsoes
     except: return []
-
-    previsoes = []
-    for i in range(0, min(40, len(data['list'])), 8):
-        item = data['list'][i]
-        t, u = item['main']['temp'], item['main']['humidity']
-        dt, vpd = calcular_delta_t_e_vpd(t, u)
-        et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
-        chuva = sum([data['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(data['list'])])
-        previsoes.append({'data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'), 'temp': t, 'umidade': u, 'vpd': vpd, 'delta_t': dt, 'chuva': round(chuva, 1), 'et0': round(et0, 2)})
-    return previsoes
 
 def enviar_email(assunto, conteudo):
     msg = EmailMessage()
@@ -156,12 +157,18 @@ def enviar_email(assunto, conteudo):
 if __name__ == "__main__":
     previsoes = get_agro_data_ultimate()
     if previsoes:
-        anotacao = ler_atividades_usuario()
-        corpo = gerar_relatorio_final(previsoes, anotacao)
+        hora_agora = datetime.now(FUSO_BRASIL).hour
         
-        cabecalho = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
-        cabecalho += "-"*60 + "\n"
-        for p in previsoes:
-            cabecalho += f"{p['data']} | {p['temp']}°C | 🌧️ {p['chuva']}mm | 💧 Consumo: {round(p['et0']*KC_ATUAL, 2)}mm\n"
+        # RELATÓRIO MATINAL (05h às 08h)
+        if 5 <= hora_agora <= 8:
+            anotacao = ler_atividades_usuario()
+            corpo = gerar_relatorio_final(previsoes, anotacao)
+            cabecalho = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
+            cabecalho += "-"*60 + "\n"
+            for p in previsoes:
+                cabecalho += f"{p['data']} | {p['temp']}°C | 🌧️ {p['chuva']}mm | 💧 {round(p['et0']*KC_ATUAL, 2)}mm\n"
+            enviar_email(f"💎 RELATÓRIO COMPLETO: {datetime.now(FUSO_BRASIL).strftime('%d/%m')}", cabecalho + "\n" + corpo)
         
-        enviar_email(f"💎 RELATÓRIO COMPLETO: {datetime.now(FUSO_BRASIL).strftime('%d/%m')}", cabecalho + "\n" + corpo)
+        # VIGILÂNCIA (Resto do dia)
+        else:
+            verificar_mudanca_brusca(previsoes)
