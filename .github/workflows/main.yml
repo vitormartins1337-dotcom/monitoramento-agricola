@@ -25,10 +25,10 @@ jobs:
         OPENWEATHER_KEY: ${{ secrets.OPENWEATHER_KEY }}
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       run: python clima_alerta.py
-    - name: Salvar Histórico
+    - name: Salvar Histórico e Memória
       run: |
         git config --global user.name "AgroRobot"
         git config --global user.email "bot@github.com"
         git add input_atividades.txt caderno_de_campo_master.csv memoria_chuva.txt
-        git commit -m "Log Profissional" || echo "Sem alterações"
+        git commit -m "Registro de Laudo e Memória Estratégica" || echo "Sem alterações"
         git push
