@@ -2,9 +2,12 @@ name: Monitoramento Agro-Intel
 
 on:
   schedule:
-    # Horários UTC: 09h (06h BRT), 14h (11h BRT), 18h (15h BRT)
+    # O GitHub usa o horário UTC (Londres). 
+    # 09:00 UTC = 06:00 Bahia (Relatório Matinal)
+    # 14:00 UTC = 11:00 Bahia (Vigilância 1)
+    # 18:00 UTC = 15:00 Bahia (Vigilância 2)
     - cron: '0 9,14,18 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # Isso permite que você aperte o botão "Run Workflow" para testar a qualquer hora
 
 permissions:
   contents: write
@@ -33,10 +36,10 @@ jobs:
         GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
       run: python clima_alerta.py
 
-    - name: Salvar Logs
+    - name: Salvar Logs e Histórico
       run: |
-        git config --global user.name "AgroBot"
+        git config --global user.name "AgroRobot"
         git config --global user.email "bot@github.com"
         git add input_atividades.txt caderno_de_campo_master.csv
-        git commit -m "Log Diário" || echo "Sem alterações"
+        git commit -m "Registro Automático Agro-Intel" || echo "Sem alterações"
         git push
