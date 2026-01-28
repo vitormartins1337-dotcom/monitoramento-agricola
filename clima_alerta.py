@@ -2,7 +2,6 @@ import requests
 import os
 import smtplib
 import math
-import csv
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
@@ -18,11 +17,11 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_KEY")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD")
 EMAIL_DESTINO = "vitormartins1337@gmail.com"
 
-# --- 2. BANCO DE CONHECIMENTO ---
-FRASES_VPD = {
-    'alto': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD ALTO > 1.3 kPa):**\nA atmosfera está drenando água excessivamente. Para evitar cavitação no xilema (ruptura da coluna de água), a planta fechou os estômatos. \n**Consequência:** Interrupção imediata da fotossíntese por falta de entrada de CO2 e travamento da absorção de Cálcio, aumentando o risco de 'Tip Burn' e necrose apical.",
-    'baixo': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD BAIXO < 0.4 kPa):**\nO ar está saturado. A planta não consegue transpirar. \n**Consequência:** A 'bomba hidráulica' do xilema desliga. Sem transpiração, não há fluxo de massa, ou seja, os nutrientes do solo não sobem para as folhas. Risco elevado de gutação e doenças.",
-    'ideal': "✅ **ANÁLISE FÍSICA DETALHADA (VPD IDEAL):**\nTermodinâmica perfeita. A planta opera com máxima condutância estomática, transpirando e fixando carbono simultaneamente."
+# --- 2. BANCO DE CONHECIMENTO CIENTÍFICO (ROBUSTEZ TOTAL) ---
+TEXTOS_VPD = {
+    'alto': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD ALTO > 1.3 kPa):**\nA atmosfera encontra-se excessivamente seca, exercendo uma forte sucção sobre a água interna da planta. Para evitar a cavitação (ruptura da coluna de água no xilema), a planta aciona o fechamento estomático defensivo.\n**Consequência:** Interrupção imediata da fotossíntese por falta de entrada de CO2 e travamento da absorção de Cálcio (transporte passivo), aumentando o risco de 'Tip Burn' e necrose de tecidos novos.",
+    'baixo': "⚠️ **ANÁLISE FÍSICA DETALHADA (VPD BAIXO < 0.4 kPa):**\nO ar está saturado de umidade, impedindo o gradiente de pressão necessário para a transpiração.\n**Consequência:** A 'bomba hidráulica' da planta desliga. Sem transpiração, o fluxo de seiva bruta cessa, e os nutrientes do solo não atingem a parte aérea. Risco elevado de gutação, que serve de meio de cultura para patógenos.",
+    'ideal': "✅ **ANÁLISE FÍSICA DETALHADA (VPD IDEAL):**\nEquilíbrio termodinâmico perfeito entre temperatura e umidade. A planta opera com máxima condutância estomática, transpirando para resfriar as folhas e absorvendo CO2 para a fotossíntese simultaneamente. É o momento de maior eficiência na assimilação de nutrientes via fertirrigação."
 }
 
 # --- 3. MOTOR DE CÁLCULO ---
@@ -36,13 +35,23 @@ def calcular_delta_t_e_vpd(temp, umidade):
     delta_t = round(temp - tw, 1)
     return delta_t, vpd
 
-# --- 4. FUNÇÕES ---
+# --- 4. FUNÇÕES DE APOIO E LIMPEZA ---
 def ler_atividades_usuario():
     arquivo = 'input_atividades.txt'
     if os.path.exists(arquivo):
         with open(arquivo, 'r', encoding='utf-8') as f:
             return f.read().strip()
     return ""
+
+def limpar_arquivo_atividades():
+    """Zera o arquivo de atividades após o envio bem-sucedido."""
+    arquivo = 'input_atividades.txt'
+    try:
+        with open(arquivo, 'w', encoding='utf-8') as f:
+            f.write("") 
+        print("Arquivo de atividades limpo para o próximo ciclo.")
+    except Exception as e:
+        print(f"Erro ao limpar arquivo: {e}")
 
 def buscar_radar_regional():
     radar_msg = "🛰️ **9. RADAR AGRO-ESTRATÉGICO (Regional Bahia/Chapada):**\n"
@@ -53,9 +62,10 @@ def buscar_radar_regional():
             clima = r['weather'][0]['description']
             radar_msg += f"• **{vizinho.split(',')[0]}:** Clima {clima}.\n"
         except: continue
-    radar_msg += "💡 **ANÁLISE REGIONAL:** O monitoramento das cidades vizinhas permite antecipar frentes frias ou massas de umidade.\n"
+    radar_msg += "💡 **ANÁLISE REGIONAL:** O monitoramento das cidades vizinhas permite antecipar frentes frias ou massas de umidade que alteram o microclima local.\n"
     return radar_msg
 
+# --- 5. GERAÇÃO DO LAUDO PROFISSIONAL ---
 def gerar_relatorio_final(previsoes, anotacao):
     hoje = previsoes[0]
     hoje_dt = datetime.now(FUSO_BRASIL)
@@ -65,25 +75,24 @@ def gerar_relatorio_final(previsoes, anotacao):
     consumo_total_semana = sum(p['et0'] * KC_ATUAL for p in previsoes)
     balanco_hidrico = chuva_total_semana - consumo_total_semana
 
-    if hoje['vpd'] > 1.3: txt_vpd = FRASES_VPD['alto']
-    elif hoje['vpd'] < 0.4: txt_vpd = FRASES_VPD['baixo']
-    else: txt_vpd = FRASES_VPD['ideal']
+    txt_vpd = TEXTOS_VPD.get('ideal')
+    if hoje['vpd'] > 1.3: txt_vpd = TEXTOS_VPD['alto']
+    elif hoje['vpd'] < 0.4: txt_vpd = TEXTOS_VPD['baixo']
 
     horas_molhamento = sum(1 for p in previsoes if p['umidade'] > 88)
 
-    parecer = f"🔎 **1. CONCLUSÃO ESTRATÉGICA (Resumo):**\n✅ OPERAÇÃO NOMINAL: Siga o manejo preventivo.\n\n"
+    parecer = f"🔎 **1. CONCLUSÃO ESTRATÉGICA (Resumo):**\n✅ OPERAÇÃO NOMINAL: Siga o manejo preventivo e acompanhe o balanço hídrico semanal.\n\n"
     parecer += f"📊 **2. DADOS TÉCNICOS DO DIA:**\n• VPD: {hoje['vpd']} kPa | Delta T: {hoje['delta_t']}°C\n{txt_vpd}\n\n"
-    parecer += f"📝 **3. DIÁRIO DE CAMPO:**\n• \"{anotacao if anotacao else 'Sem registros'}\"\n\n"
-    parecer += f"🍄 **4. MONITORAMENTO FITOSSANITÁRIO:**\n• {horas_molhamento} janelas de orvalho.\n💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de filme de água na folha para emitir o tubo germinativo.\n\n"
-    parecer += f"🛒 **5. NUTRIÇÃO MINERAL SUGERIDA:**\n• FASE: Crescimento Vegetativo.\n💡 **CIÊNCIA DO SOLO:** O Nitrogênio é o bloco construtor de aminoácidos. O Magnésio é o átomo central da clorofila.\n\n"
-    parecer += f"🧬 **6. FISIOLOGIA:**\n• Idade: {dias_campo} dias | GDA: {dias_campo * 14.8:.0f}\n💡 **FUNDAMENTAÇÃO:** A conversão de luz em açúcar depende do acúmulo de calor (Graus-Dia).\n\n"
-    
-    parecer += f"💧 **7. MANEJO HÍDRICO & TENDÊNCIA:**\n• 🌧️ Chuva Semanal: {chuva_total_semana:.1f} mm\n• 💧 Consumo (ETc): {consumo_total_semana:.1f} mm\n📈 **BALANÇO:** {'✅ SUPERÁVIT' if balanco_hidrico > 0 else '⚠️ DÉFICIT'} de {abs(balanco_hidrico):.1f} mm.\n💡 **TENDÊNCIA:** {'Reduza regas' if balanco_hidrico > 0 else 'Aumente regas'}.\n\n"
-    
-    parecer += f"🛡️ **8. VIGILÂNCIA DE APLICAÇÃO (Delta T):**\n✅ Delta T em {hoje['delta_t']}°C. Condição ideal para pulverização.\n\n"
+    parecer += f"📝 **3. DIÁRIO DE CAMPO:**\n• \"{anotacao if anotacao else 'Sem registros de campo'}\"\n\n"
+    parecer += f"🍄 **4. MONITORAMENTO FITOSSANITÁRIO:**\n• {horas_molhamento} janelas de orvalho (Risco {'ALTO' if horas_molhamento > 2 else 'BAIXO'}).\n💡 **FUNDAMENTAÇÃO:** Esporos de *Botrytis* e *Antracnose* dependem de um filme de água na folha para emitir o tubo germinativo. O monitoramento de orvalho é mais crítico que a chuva acumulada.\n\n"
+    parecer += f"🛒 **5. NUTRIÇÃO MINERAL SUGERIDA:**\n• FASE: Crescimento Vegetativo.\n💡 **CIÊNCIA DO SOLO:** O Nitrogênio forma aminoácidos e proteínas. O Magnésio é o átomo central da clorofila; sem ele, a planta não converte luz solar em energia química (ATP).\n\n"
+    parecer += f"🧬 **6. FISIOLOGIA:**\n• Idade: {dias_campo} dias | GDA: {dias_campo * 14.8:.0f}\n💡 **FUNDAMENTAÇÃO:** A conversão de luz em açúcar (Brix) depende do calor acumulado (Graus-Dia) acima da temperatura base.\n\n"
+    parecer += f"💧 **7. MANEJO HÍDRICO & TENDÊNCIA:**\n• 🌧️ Chuva Prevista (7d): {chuva_total_semana:.1f} mm\n• 💧 Consumo (ETc): {consumo_total_semana:.1f} mm\n📈 **BALANÇO:** {'✅ SUPERÁVIT' if balanco_hidrico > 0 else '⚠️ DÉFICIT'} de {abs(balanco_hidrico):.1f} mm.\n💡 **TENDÊNCIA:** {'Solo saturado. REDUZA regas para evitar anoxia radicular.' if balanco_hidrico > 0 else 'AUMENTE regas para manter o turgor.'}\n💡 **EXPLICAÇÃO:** A ETc é a transpiração real baseada no coeficiente biológico (Kc) da planta.\n\n"
+    parecer += f"🛡️ **8. VIGILÂNCIA DE APLICAÇÃO (Delta T):**\n✅ Delta T em {hoje['delta_t']}°C. Condição ideal. O tamanho da gota será preservado contra evaporação precoce.\n\n"
     parecer += buscar_radar_regional()
     return parecer
 
+# --- 6. EXECUÇÃO ---
 def get_agro_data():
     url = f"https://api.openweathermap.org/data/2.5/forecast?q={CIDADE}&appid={OPENWEATHER_API_KEY}&units=metric&lang=pt_br"
     r = requests.get(url).json()
@@ -101,7 +110,8 @@ def get_agro_data():
 if __name__ == "__main__":
     try:
         previsoes = get_agro_data()
-        corpo = gerar_relatorio_final(previsoes, ler_atividades_usuario())
+        anotacao = ler_atividades_usuario()
+        corpo = gerar_relatorio_final(previsoes, anotacao)
         header = f"💎 CONSULTORIA AGRO-INTEL PREMIUM\n📅 {datetime.now(FUSO_BRASIL).strftime('%d/%m/%Y %H:%M')}\n"
         header += "-"*60 + "\n"
         for p in previsoes:
@@ -112,8 +122,14 @@ if __name__ == "__main__":
         msg['Subject'] = f"💎 RELATÓRIO COMPLETO: {datetime.now(FUSO_BRASIL).strftime('%d/%m')}"
         msg['From'] = EMAIL_DESTINO
         msg['To'] = EMAIL_DESTINO
+        
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(EMAIL_DESTINO, GMAIL_PASSWORD)
             smtp.send_message(msg)
+            print("Relatório enviado com sucesso.")
+            
+        # LIMPEZA AUTOMÁTICA APÓS SUCESSO
+        limpar_arquivo_atividades()
+
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"Erro na execução: {e}")
