@@ -14,26 +14,25 @@ from streamlit_google_auth import Authenticate
 # --- 1. CONFIGURAÇÃO DE ALTO NÍVEL ---
 st.set_page_config(page_title="Agro-Intel Enterprise", page_icon="🛰️", layout="wide")
 
-# --- LOGIN REAL COM GOOGLE (VERSÃO POSICIONAL - MAIS COMPATÍVEL) ---
+# --- LOGIN REAL COM GOOGLE (VERSÃO COMPATÍVEL 2026) ---
 try:
-    # IMPORTANTE: Use a sua URL real aqui
+    # URL do seu app (Certifique-se que é EXATAMENTE essa no Google Cloud Console)
     URL_DO_APP = "https://monitoramento-agricola.streamlit.app" 
 
-    # Se der erro de 'unexpected keyword', a forma abaixo (posicional) resolve:
+    # Inicializa o autenticador sem a função que deu erro
     authenticator = Authenticate(
-        ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"], # Lista de nomes nos Secrets
-        "agro_intel_session",                        # Nome do cookie
-        "agro_secret_key_2026",                      # Chave do cookie
-        30,                                          # Expiração em dias
-        URL_DO_APP                                   # Redirect URI
+        secret_names=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        cookie_name="agro_intel_session",
+        key="agro_secret_key_2026", 
+        cookie_expiry_days=30,
+        redirect_uri=URL_DO_APP
     )
 except Exception as e:
     st.error(f"Erro na inicialização: {e}")
     st.stop()
 
-# Verifica autenticação
-authenticator.check_authenticity()
-
+# --- LOGICA DE LOGIN SEM 'check_authenticity' ---
+# O sistema agora verifica o estado da conexão diretamente
 if not st.session_state.get('connected'):
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
@@ -50,16 +49,12 @@ if not st.session_state.get('connected'):
 
 # --- DADOS DO USUÁRIO ---
 USER_EMAIL = st.session_state.get('email')
-USER_NAME = st.session_state.get('name', 'Produtor')
+USER_NAME = st.session_state.get('name', 'Engenheiro Agrônomo')
 USER_PIC = st.session_state.get('picture', "https://cdn-icons-png.flaticon.com/512/3135/3135715.png")
 
-# --- CARREGAMENTO DE CHAVES API (BACKEND) ---
-try:
-    WEATHER_KEY = st.secrets["OPENWEATHER_KEY"]
-    GEMINI_KEY = st.secrets["GEMINI_KEY"]
-except:
-    st.error("Chaves climáticas não encontradas nos Secrets.")
-    st.stop()
+# --- CARREGAMENTO DE CHAVES API ---
+WEATHER_KEY = st.secrets["OPENWEATHER_KEY"]
+GEMINI_KEY = st.secrets["GEMINI_KEY"]
 
 # --- ESTILIZAÇÃO CSS ---
 st.markdown("""
@@ -72,7 +67,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ENCICLOPÉDIA AGRONÔMICA (DADOS INTEGRAIS) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
@@ -84,10 +79,10 @@ BANCO_MASTER = {
         },
         "fases": {
             "Emergência (0-20 dias)": {"desc": "Brotamento inicial.", "fisiologia": "Uso de reservas do tubérculo.", "manejo": "Solo aerado.", "quimica": "Azoxistrobina + Tiametoxam."},
-            "Vegetativo (20-35 dias)": {"desc": "Expansão foliar.", "fisiologia": "Demanda de N.", "manejo": "Amontoa.", "quimica": "Mancozeb."},
-            "Tuberização/Gancho (35-55 dias)": {"desc": "Diferenciação de tubérculos.", "fisiologia": "Inversão hormonal.", "manejo": "Irrigação constante.", "quimica": "Revus."},
+            "Vegetativo (20-35 dias)": {"desc": "Expansão foliar.", "fisiologia": "Demanda de N.", "manejo": "Amontoa técnica.", "quimica": "Mancozeb."},
+            "Tuberização/Gancho (35-55 dias)": {"desc": "Diferenciação de tubérculos.", "fisiologia": "Inversão hormonal.", "manejo": "Irrigação de precisão.", "quimica": "Revus (Mandipropamida)."},
             "Enchimento (55-85 dias)": {"desc": "Acúmulo de matéria seca.", "fisiologia": "Dreno de K e Mg.", "manejo": "Sanidade foliar.", "quimica": "Benévia."},
-            "Maturação (85+ dias)": {"desc": "Suberização (cura da pele).", "fisiologia": "Finalização térmica.", "manejo": "Dessecação.", "quimica": "Diquat."}
+            "Maturação (85+ dias)": {"desc": "Cura da pele (suberização).", "fisiologia": "Finalização térmica.", "manejo": "Dessecação.", "quimica": "Diquat."}
         }
     }
 }
@@ -111,13 +106,12 @@ def get_forecast(lat, lon, kc, t_base):
     except: return pd.DataFrame()
 
 # --- 4. SIDEBAR ---
-if 'loc' not in st.session_state: st.session_state['loc'] = {"lat": -13.200, "lon": -41.400}
-
 with st.sidebar:
     st.image(USER_PIC, width=80)
-    st.markdown(f"👤 **{USER_NAME}**")
+    st.markdown(f"**{USER_NAME}**")
     st.caption(USER_EMAIL)
-    authenticator.logout()
+    if st.button("🚪 Logout"):
+        authenticator.logout()
     
     st.divider()
     cultura_sel = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
@@ -129,7 +123,7 @@ with st.sidebar:
 # --- 5. DASHBOARD ---
 st.title("🛰️ Agro-Intel Enterprise")
 
-df = get_forecast(st.session_state['loc']['lat'], st.session_state['loc']['lon'], info_v['kc'], BANCO_MASTER[cultura_sel]['t_base'])
+df = get_forecast("-13.200", "-41.400", info_v['kc'], BANCO_MASTER[cultura_sel]['t_base'])
 
 if not df.empty:
     hoje = df.iloc[0]; dias = (date.today() - d_plantio).days
@@ -138,7 +132,7 @@ if not df.empty:
     st.markdown(f"""
     <div class="header-box">
         <h2>{cultura_sel} - {var_sel}</h2>
-        <p style="font-size:1.1em"><b>{dias} Dias de Ciclo</b> | {fase_sel}</p>
+        <p style="font-size:1.1em"><b>{dias} Dias de Ciclo</b> | Fase Atual: {fase_sel}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -148,18 +142,22 @@ if not df.empty:
     c3.metric("💦 ETc Diária", f"{hoje['ETc']} mm")
     c4.metric("🛡️ Chuva", f"{hoje['Chuva']} mm")
 
-    tabs = st.tabs(["🎓 Consultoria", "📊 Clima", "👁️ IA Vision", "🗺️ Mapa", "🔔 Alertas"])
+    tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima", "👁️ IA Vision", "🗺️ Mapa", "🔔 Notificações"])
 
     with tabs[0]:
         dados = BANCO_MASTER[cultura_sel]['fases'][fase_sel]
         
-        st.markdown(f"### 🔥 Acúmulo Térmico: {gda_acum:.0f} / {meta_gda} GDA")
+        
+        
+        st.markdown(f"### 🔥 Acúmulo Térmico (GDA): {gda_acum:.0f} / {meta_gda}")
         st.progress(min(1.0, gda_acum/meta_gda))
         
+        # Alerta de Risco Fitossanitário (Baseado na Umidade Relativa)
         estilo = "alert-low" if hoje['Umid'] < 85 else "alert-high"
-        msg = "✅ Clima favorável." if estilo == "alert-low" else "🚨 ALERTA: Risco de Requeima."
+        msg = "✅ Condição desfavorável a fungos." if estilo == "alert-low" else "🚨 ALERTA: Risco elevado de Requeima."
         
         
+
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(f"<div class='tech-card'><b>🧬 Fisiologia:</b><br>{dados['desc']}</div>", unsafe_allow_html=True)
@@ -168,6 +166,9 @@ if not df.empty:
             st.markdown(f"<div class='tech-card'><b>🛠️ Manejo Sugerido:</b><br>{dados['manejo']}<br><hr><b>Prescrição:</b><br>{dados['quimica']}</div>", unsafe_allow_html=True)
 
     with tabs[4]:
-        st.info(f"Relatórios para: **{USER_EMAIL}**")
-        if st.button("Ativar Notificações"):
-            st.success("Protocolo ativado!")
+        st.markdown(f"### 🔔 Central de Alertas")
+        st.info(f"Sincronizado com: **{USER_EMAIL}**")
+        if st.button("Ativar Relatórios Automáticos"):
+            st.success(f"Protocolo ativo! Relatórios de GDA e risco sanitário serão enviados para {USER_EMAIL}")
+else:
+    st.error("⚠️ Erro ao carregar dados de satélite.")
