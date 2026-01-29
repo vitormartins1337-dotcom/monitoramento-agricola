@@ -14,18 +14,24 @@ from streamlit_google_auth import Authenticate
 # --- 1. CONFIGURAÇÃO DE ALTO NÍVEL ---
 st.set_page_config(page_title="Agro-Intel Enterprise", page_icon="🛰️", layout="wide")
 
-# --- LOGIN REAL COM GOOGLE OAUTH 2.0 ---
-# O sistema puxa automaticamente as credenciais que você acabou de criar via Secrets
-authenticator = Authenticate(
-    secret_names=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
-    cookie_name="agro_intel_session",
-    cookie_key="agro_secret_key_2026",
-    cookie_expiry_days=30,
-)
+# # --- 1. CONFIGURAÇÃO DO LOGIN REAL (REVISADA) ---
+# Buscamos os dados nos Secrets e definimos a URL de redirecionamento
+try:
+    # Se você está testando local, use 'http://localhost:8501'
+    # Se já subiu para a nuvem, use a URL do seu app (ex: 'https://seu-app.streamlit.app')
+    REDIRECT_URI = "https://monitoramento-agricola.streamlit.app" 
 
-# Verifica autenticação
-authenticator.check_authenticity()
-
+    authenticator = Authenticate(
+        client_id=st.secrets["GOOGLE_CLIENT_ID"],
+        client_secret=st.secrets["GOOGLE_CLIENT_SECRET"],
+        redirect_uri=REDIRECT_URI,
+        cookie_name="agro_intel_session",
+        cookie_key="agro_secret_key_2026",
+        cookie_expiry_days=30,
+    )
+except Exception as e:
+    st.error(f"Erro na configuração de autenticação: {e}")
+    st.stop()
 # --- TELA DE ACESSO CORPORATIVO ---
 if not st.session_state.get('connected'):
     c1, c2, c3 = st.columns([1, 2, 1])
