@@ -11,7 +11,7 @@ from folium.plugins import LocateControl, Fullscreen
 from streamlit_folium import st_folium
 
 # --- 1. CONFIGURAÇÃO VISUAL ---
-st.set_page_config(page_title="Agro-Intel Expert", page_icon="👨‍🌾", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Agro-Intel GDA", page_icon="🌡️", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
 <style>
@@ -19,7 +19,7 @@ st.markdown("""
     div[data-testid="metric-container"] { background-color: #fff; border-left: 5px solid #0277bd; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .header-box { background: linear-gradient(135deg, #01579b 0%, #0288d1 100%); color: white; padding: 25px; border-radius: 10px; margin-bottom: 20px; }
     .tech-card { background-color: #fff; padding: 20px; border-radius: 8px; border: 1px solid #cfd8dc; margin-bottom: 15px; }
-    .tech-header { color: #01579b; font-weight: 700; font-size: 1.1em; border-bottom: 2px solid #eceff1; padding-bottom: 10px; margin-bottom: 15px; }
+    .gda-box { background-color: #fff3e0; border: 1px solid #ffe0b2; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
     .radar-card { background-color: #e1f5fe; padding: 10px; border-radius: 5px; text-align: center; border: 1px solid #b3e5fc; }
     .alert-high { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 5px; color: #b71c1c; }
     .alert-low { background-color: #e8f5e9; border-left: 5px solid #2e7d32; padding: 15px; border-radius: 5px; color: #1b5e20; }
@@ -27,100 +27,45 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ENCICLOPÉDIA AGRONÔMICA (MANTIDA INTACTA) ---
+# --- 2. ENCICLOPÉDIA AGRONÔMICA (COM GDA META ADICIONADO) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
         "vars": {
-            "Orchestra": {"kc": 1.15, "info": "Pele lisa. Exige K para acabamento. Sensível a Pinta Preta."},
-            "Cupido": {"kc": 1.10, "info": "Ciclo curto. Extrema sensibilidade à Requeima."},
-            "Camila": {"kc": 1.15, "info": "Mercado fresco. Cuidado com Sarna Comum/Prateada."},
-            "Atlantic": {"kc": 1.15, "info": "Indústria. Monitorar Coração Oco e Matéria Seca."}
+            "Orchestra": {"kc": 1.15, "gda_meta": 1600, "info": "Pele lisa. Exige K para acabamento. Sensível a Pinta Preta."},
+            "Cupido": {"kc": 1.10, "gda_meta": 1400, "info": "Ciclo curto. Extrema sensibilidade à Requeima."},
+            "Camila": {"kc": 1.15, "gda_meta": 1550, "info": "Mercado fresco. Cuidado com Sarna Comum/Prateada."},
+            "Atlantic": {"kc": 1.15, "gda_meta": 1650, "info": "Indústria. Monitorar Coração Oco e Matéria Seca."}
         },
         "fases": {
-            "Emergência (0-20 dias)": {
-                "desc": "Brotamento e enraizamento.",
-                "fisiologia": "A planta drena reservas da batata-mãe. Raízes frágeis.",
-                "manejo": "Solo deve estar friável. Não encharcar (risco de Pectobacterium).",
-                "quimica": "**Solo:** Azoxistrobina (Rizoctonia) + Tiametoxam/Fipronil (Pragas).\n**Foliar:** Ciromazina (Minadora), Metribuzin (Herbicida pós-emergente)."
-            },
-            "Vegetativo (20-35 dias)": {
-                "desc": "Crescimento explosivo da parte aérea.",
-                "fisiologia": "Alta demanda de Nitrogênio e Cálcio. Definição do número de hastes.",
-                "manejo": "Realizar a Amontoa. Monitorar Vaquinha (Diabrotica) e Pulgão.",
-                "quimica": "**Preventivos:** Mancozeb, Clorotalonil, Propinebe.\n**Inseticidas:** Acetamiprido (Pulgão), Lambda-Cialotrina (Vaquinha)."
-            },
-            "Tuberização/Gancho (35-50 dias)": {
-                "desc": "Início da formação dos tubérculos.",
-                "fisiologia": "Inversão hormonal (Giberelina cai). Estresse hídrico causa Sarna e abortamento.",
-                "manejo": "Fase Crítica! Água constante e leve. Controle 'militar' de Requeima.",
-                "quimica": "**Requeima (Sistêmicos):** Metalaxil-M, Dimetomorfe, Mandipropamida, Fluazinam, Cimoxanil.\n**Bacterioses:** Kasugamicina."
-            },
-            "Enchimento (50-80 dias)": {
-                "desc": "Crescimento dos tubérculos.",
-                "fisiologia": "Dreno forte de Potássio e Magnésio. Translocação Folha -> Tubérculo.",
-                "manejo": "Monitorar Mosca Branca, Traça e Larva Alfinete.",
-                "quimica": "**Mosca Branca:** Ciantraniliprole, Espirotesifeno, Piriproxifem.\n**Traça:** Clorfenapir, Indoxacarbe, Espinosade.\n**Alternaria:** Tebuconazol, Boscalida."
-            },
-            "Maturação (80+ dias)": {
-                "desc": "Senescência e formação de pele.",
-                "fisiologia": "Suberização (cura da pele).",
-                "manejo": "Dessecação. Evitar solo úmido (Podridão Mole/Sarna).",
-                "quimica": "Dessecante: Diquat. Monitorar Traça no solo."
-            }
+            "Emergência (0-20 dias)": {"desc": "Brotamento e enraizamento.", "fisiologia": "A planta drena reservas da batata-mãe. Raízes frágeis.", "manejo": "Solo deve estar friável. Não encharcar (risco de Pectobacterium).", "quimica": "**Solo:** Azoxistrobina (Rizoctonia) + Tiametoxam/Fipronil (Pragas).\n**Foliar:** Ciromazina (Minadora), Metribuzin (Herbicida pós-emergente)."},
+            "Vegetativo (20-35 dias)": {"desc": "Crescimento explosivo da parte aérea.", "fisiologia": "Alta demanda de Nitrogênio e Cálcio. Definição do número de hastes.", "manejo": "Realizar a Amontoa. Monitorar Vaquinha (Diabrotica) e Pulgão.", "quimica": "**Preventivos:** Mancozeb, Clorotalonil, Propinebe.\n**Inseticidas:** Acetamiprido (Pulgão), Lambda-Cialotrina (Vaquinha)."},
+            "Tuberização/Gancho (35-50 dias)": {"desc": "Início da formação dos tubérculos.", "fisiologia": "Inversão hormonal (Giberelina cai). Estresse hídrico causa Sarna e abortamento.", "manejo": "Fase Crítica! Água constante e leve. Controle 'militar' de Requeima.", "quimica": "**Requeima (Sistêmicos):** Metalaxil-M, Dimetomorfe, Mandipropamida, Fluazinam, Cimoxanil.\n**Bacterioses:** Kasugamicina."},
+            "Enchimento (50-80 dias)": {"desc": "Crescimento dos tubérculos.", "fisiologia": "Dreno forte de Potássio e Magnésio. Translocação Folha -> Tubérculo.", "manejo": "Monitorar Mosca Branca, Traça e Larva Alfinete.", "quimica": "**Mosca Branca:** Ciantraniliprole, Espirotesifeno, Piriproxifem.\n**Traça:** Clorfenapir, Indoxacarbe, Espinosade.\n**Alternaria:** Tebuconazol, Boscalida."},
+            "Maturação (80+ dias)": {"desc": "Senescência e formação de pele.", "fisiologia": "Suberização (cura da pele).", "manejo": "Dessecação. Evitar solo úmido (Podridão Mole/Sarna).", "quimica": "Dessecante: Diquat. Monitorar Traça no solo."}
         }
     },
     "Café (Coffea arabica)": {
         "t_base": 10,
-        "vars": {"Catuaí": {"kc": 1.1, "info": "Suscetível a ferrugem."}, "Arara": {"kc": 1.2, "info": "Resistente a ferrugem."}},
+        "vars": {"Catuaí": {"kc": 1.1, "gda_meta": 3000, "info": "Suscetível a ferrugem."}, "Arara": {"kc": 1.2, "gda_meta": 2900, "info": "Resistente a ferrugem."}},
         "fases": {
-            "Florada (Set/Out)": {
-                "desc": "Antese.",
-                "fisiologia": "Alta demanda de Boro e Zinco para o tubo polínico.",
-                "manejo": "Proteger polinizadores. Monitorar Phoma e Mancha Aureolada.",
-                "quimica": "Foliar: Ca+B+Zn. Fungicida: Boscalida, Piraclostrobina."
-            },
-            "Chumbinho (Nov/Dez)": {
-                "desc": "Expansão do fruto.",
-                "fisiologia": "Intensa divisão celular. Déficit hídrico gera grãos pequenos.",
-                "manejo": "Controle preventivo de Cercospora e Ferrugem.",
-                "quimica": "**Ferrugem/Cercospora:** Ciproconazol + Azoxistrobina (Priori Xtra), Tebuconazol, Epoxiconazol."
-            },
-            "Granação (Jan/Mar)": {
-                "desc": "Enchimento de grão (sólidos).",
-                "fisiologia": "Pico de extração de N e K. Risco de escaldadura.",
-                "manejo": "Monitorar Broca do Café e Bicho Mineiro.",
-                "quimica": "**Broca:** Ciantraniliprole (Benévia), Clorantraniliprole.\n**Bicho Mineiro:** Cartape, Clorpirifós."
-            }
+            "Florada (Set/Out)": {"desc": "Antese.", "fisiologia": "Alta demanda de Boro e Zinco para o tubo polínico.", "manejo": "Proteger polinizadores. Monitorar Phoma e Mancha Aureolada.", "quimica": "Foliar: Ca+B+Zn. Fungicida: Boscalida, Piraclostrobina."},
+            "Chumbinho (Nov/Dez)": {"desc": "Expansão do fruto.", "fisiologia": "Intensa divisão celular. Déficit hídrico gera grãos pequenos.", "manejo": "Controle preventivo de Cercospora e Ferrugem.", "quimica": "**Ferrugem/Cercospora:** Ciproconazol + Azoxistrobina (Priori Xtra), Tebuconazol, Epoxiconazol."},
+            "Granação (Jan/Mar)": {"desc": "Enchimento de grão (sólidos).", "fisiologia": "Pico de extração de N e K. Risco de escaldadura.", "manejo": "Monitorar Broca do Café e Bicho Mineiro.", "quimica": "**Broca:** Ciantraniliprole (Benévia), Clorantraniliprole.\n**Bicho Mineiro:** Cartape, Clorpirifós."}
         }
     },
     "Tomate": {
         "t_base": 10,
-        "vars": {"Italiano": {"kc": 1.2, "info": "Fundo Preto."}, "Grape": {"kc": 1.1, "info": "Rachadura."}},
+        "vars": {"Italiano": {"kc": 1.2, "gda_meta": 1600, "info": "Fundo Preto."}, "Grape": {"kc": 1.1, "gda_meta": 1450, "info": "Rachadura."}},
         "fases": {
-            "Vegetativo": {
-                "desc": "Crescimento de hastes.",
-                "fisiologia": "Estruturação.",
-                "manejo": "Desbrota. Monitorar Tripes (Vira-cabeça).",
-                "quimica": "**Tripes:** Espinetoram, Formetanato.\n**Doenças:** Mancozeb, Cobre (Bacteriose)."
-            },
-            "Florada": {
-                "desc": "Pegamento.",
-                "fisiologia": "Abortamento se T>32°C.",
-                "manejo": "Cálcio Foliar obrigatório. Monitorar Oídio.",
-                "quimica": "**Oídio:** Enxofre, Metrafenona.\n**Nutrição:** Cálcio Quelatado."
-            },
-            "Frutificação": {
-                "desc": "Engorda.",
-                "fisiologia": "Dreno de K.",
-                "manejo": "Monitorar Traça (Tuta) e Requeima.",
-                "quimica": "**Tuta absoluta:** Clorfenapir, Teflubenzurom, Bacillus thuringiensis.\n**Requeima:** Mandipropamida, Zoxamida."
-            }
+            "Vegetativo": {"desc": "Crescimento de hastes.", "fisiologia": "Estruturação.", "manejo": "Desbrota. Monitorar Tripes (Vira-cabeça).", "quimica": "**Tripes:** Espinetoram, Formetanato.\n**Doenças:** Mancozeb, Cobre (Bacteriose)."},
+            "Florada": {"desc": "Pegamento.", "fisiologia": "Abortamento se T>32°C.", "manejo": "Cálcio Foliar obrigatório. Monitorar Oídio.", "quimica": "**Oídio:** Enxofre, Metrafenona.\n**Nutrição:** Cálcio Quelatado."},
+            "Frutificação": {"desc": "Engorda.", "fisiologia": "Dreno de K.", "manejo": "Monitorar Traça (Tuta) e Requeima.", "quimica": "**Tuta absoluta:** Clorfenapir, Teflubenzurom, Bacillus thuringiensis.\n**Requeima:** Mandipropamida, Zoxamida."}
         }
     },
     "Mirtilo (Blueberry)": {
         "t_base": 7,
-        "vars": {"Emerald": {"kc": 0.95, "info": "pH 4.5."}, "Biloxi": {"kc": 0.90, "info": "Ereta."}},
+        "vars": {"Emerald": {"kc": 0.95, "gda_meta": 1800, "info": "pH 4.5."}, "Biloxi": {"kc": 0.90, "gda_meta": 1900, "info": "Ereta."}},
         "fases": {
             "Brotação": {"desc": "Folhas novas.", "fisiologia": "Reservas.", "manejo": "Cochonilha.", "quimica": "Óleo Mineral + Imidacloprido."},
             "Florada": {"desc": "Polinização.", "fisiologia": "Abelhas.", "manejo": "Botrytis.", "quimica": "Fludioxonil (Switch) à noite. Não aplicar inseticida."},
@@ -129,7 +74,7 @@ BANCO_MASTER = {
     },
     "Morango": {
         "t_base": 7,
-        "vars": {"San Andreas": {"kc": 0.85, "info": "Ácaros."}, "Albion": {"kc": 0.85, "info": "Oídio."}},
+        "vars": {"San Andreas": {"kc": 0.85, "gda_meta": 1200, "info": "Ácaros."}, "Albion": {"kc": 0.85, "gda_meta": 1250, "info": "Oídio."}},
         "fases": {
             "Vegetativo": {"desc": "Coroa.", "fisiologia": "Folhas.", "manejo": "Limpeza.", "quimica": "**Oídio:** Enxofre, Triflumizol.\n**Ácaro:** Abamectina."},
             "Florada": {"desc": "Flores.", "fisiologia": "Polinização.", "manejo": "Mofo Cinzento.", "quimica": "**Botrytis:** Iprodiona, Procimidona, Ciprodinil."},
@@ -137,16 +82,16 @@ BANCO_MASTER = {
         }
     },
     "Amora Preta": {
-        "t_base": 7, "vars": {"Tupy": {"kc": 1.0, "info": "Frio."}, "Xingu": {"kc": 1.05, "info": "Sem espinho."}},
+        "t_base": 7, "vars": {"Tupy": {"kc": 1.0, "gda_meta": 1500, "info": "Frio."}, "Xingu": {"kc": 1.05, "gda_meta": 1400, "info": "Sem espinho."}},
         "fases": {"Brotação": {"desc": "Hastes.", "fisiologia": "Vigor.", "manejo": "Ferrugem.", "quimica": "Tebuconazol."}, "Frutificação": {"desc": "Bagas.", "fisiologia": "Açúcar.", "manejo": "Drosófila.", "quimica": "Espinosade."}}
     },
     "Framboesa": {
-        "t_base": 7, "vars": {"Heritage": {"kc": 1.1, "info": "Remontante."}, "Golden": {"kc": 1.05, "info": "Amarela."}},
+        "t_base": 7, "vars": {"Heritage": {"kc": 1.1, "gda_meta": 1300, "info": "Remontante."}, "Golden": {"kc": 1.05, "gda_meta": 1250, "info": "Amarela."}},
         "fases": {"Brotação": {"desc": "Hastes.", "fisiologia": "Vigor.", "manejo": "Ácaro.", "quimica": "Abamectina."}, "Florada": {"desc": "Flores.", "fisiologia": "Chuva.", "manejo": "Podridão.", "quimica": "Iprodiona."}}
     }
 }
 
-# --- 3. FUNÇÕES (GEO, CÁLCULO, IA) ---
+# --- 3. FUNÇÕES ---
 def get_credentials():
     return st.query_params.get("w_key", None), st.query_params.get("g_key", None)
 
@@ -180,23 +125,13 @@ def get_forecast(api_key, lat, lon, kc, t_base):
     except: return pd.DataFrame()
 
 def get_radar_data(api_key, lat, lon):
-    pontos = {
-        "Norte (15km)": (lat + 0.15, lon),
-        "Sul (15km)": (lat - 0.15, lon),
-        "Leste (15km)": (lat, lon + 0.15),
-        "Oeste (15km)": (lat, lon - 0.15)
-    }
+    pontos = {"Norte (15km)": (lat + 0.15, lon), "Sul (15km)": (lat - 0.15, lon), "Leste (15km)": (lat, lon + 0.15), "Oeste (15km)": (lat, lon - 0.15)}
     resultados = []
     for direcao, coords in pontos.items():
         try:
             url = f"https://api.openweathermap.org/data/2.5/weather?lat={coords[0]}&lon={coords[1]}&appid={api_key}&units=metric&lang=pt_br"
             r = requests.get(url).json()
-            resultados.append({
-                "Direcao": direcao,
-                "Temp": r['main']['temp'],
-                "Clima": r['weather'][0]['description'].title(),
-                "Chuva": "Sim" if "rain" in r or "chuva" in r['weather'][0]['description'] else "Não"
-            })
+            resultados.append({"Direcao": direcao, "Temp": r['main']['temp'], "Clima": r['weather'][0]['description'].title(), "Chuva": "Sim" if "rain" in r or "chuva" in r['weather'][0]['description'] else "Não"})
         except: pass
     return pd.DataFrame(resultados)
 
@@ -215,7 +150,6 @@ with st.sidebar:
         if st.button("🔗 Salvar"): st.query_params["w_key"] = val_w; st.query_params["g_key"] = val_g; st.rerun()
 
     st.divider()
-    
     st.markdown("### 📍 Localização da Propriedade")
     tab_busca, tab_coord = st.tabs(["🔍 Cidade", "🌐 Coordenadas"])
     with tab_busca:
@@ -229,38 +163,38 @@ with st.sidebar:
     with tab_coord:
         nlat = st.number_input("Latitude:", value=st.session_state['loc_lat'], format="%.5f")
         nlon = st.number_input("Longitude:", value=st.session_state['loc_lon'], format="%.5f")
-        if st.button("Atualizar GPS"):
-            st.session_state['loc_lat'], st.session_state['loc_lon'] = nlat, nlon
-            st.rerun()
+        if st.button("Atualizar GPS"): st.session_state['loc_lat'], st.session_state['loc_lon'] = nlat, nlon; st.rerun()
 
     st.divider()
     cultura_sel = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
     var_sel = st.selectbox("Cultivar:", list(BANCO_MASTER[cultura_sel]['vars'].keys()))
     fase_sel = st.selectbox("Fase Atual:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
-    
-    # INPUT DE DATA DE PLANTIO
     if 'd_plantio' not in st.session_state: st.session_state['d_plantio'] = date(2025, 11, 25)
     d_plantio = st.date_input("Início do Ciclo:", st.session_state['d_plantio'])
     info_v = BANCO_MASTER[cultura_sel]['vars'][var_sel]
 
 # --- 5. DASHBOARD ---
-st.title("🛰️ Agro-Intel Expert v17.1")
+st.title("🛰️ Agro-Intel Expert v18.0")
 
 if val_w:
     df = get_forecast(val_w, st.session_state['loc_lat'], st.session_state['loc_lon'], info_v['kc'], BANCO_MASTER[cultura_sel]['t_base'])
     
     if not df.empty:
         hoje = df.iloc[0]
-        
-        # --- CÁLCULO DOS DIAS DE CAMPO ---
         dias_campo = (date.today() - d_plantio).days
         
-        # --- HEADER COM O DADO DOS DIAS ---
+        # --- CÁLCULO GDA ESTIMADO (Simples para demonstração) ---
+        # Estimamos o GDA acumulado multiplicando a média diária da previsão pelos dias de campo
+        media_gda_dia = df['GDA'].mean()
+        gda_acumulado_estimado = dias_campo * media_gda_dia
+        gda_meta = info_v.get('gda_meta', 1500)
+        progresso_maturacao = min(1.0, gda_acumulado_estimado / gda_meta)
+
         st.markdown(f"""
         <div class="header-box">
             <h2>Gestão: {cultura_sel} - {var_sel}</h2>
             <p style="font-size:1.2em">
-                📆 <b>Idade da Lavoura: {dias_campo} dias</b> | Fase: <b>{fase_sel}</b>
+                📆 <b>Idade: {dias_campo} dias</b> | Fase: <b>{fase_sel}</b>
             </p>
             <p>🧬 Genética: {info_v['info']}</p>
         </div>
@@ -274,11 +208,24 @@ if val_w:
 
         tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Água", "📡 Radar Regional", "👁️ IA Vision", "💰 Custos", "🗺️ Mapa da Fazenda"])
 
-        # ABA 1: CONSULTORIA TÉCNICA
+        # ABA 1: CONSULTORIA TÉCNICA (COM GDA)
         with tabs[0]:
             dados = BANCO_MASTER[cultura_sel]['fases'][fase_sel]
-            risco = "Baixo"; msg = "✅ <b>Clima Seco:</b> Use Protetores (Mancozeb/Cobre). Baixo risco de infecção."; estilo = "alert-low"
-            if hoje['Umid'] > 85 or hoje['Chuva'] > 2: risco="ALTO"; msg="🚨 <b>ALERTA UMIDADE:</b> Risco severo. Use <b>SISTÊMICOS/PENETRANTES</b>."; estilo="alert-high"
+            
+            # --- NOVO BLOCO GDA ---
+            st.markdown(f"""
+            <div class="gda-box">
+                <h4>🔥 Maturação Térmica (GDA)</h4>
+                <p>Acumulado Estimado: <b>{gda_acumulado_estimado:.0f}</b> / Meta: <b>{gda_meta}</b> GDA</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.progress(progresso_maturacao)
+            if progresso_maturacao >= 1.0:
+                st.success("✅ Atingiu a maturação térmica teórica! Verifique ponto de colheita.")
+            
+            # Matriz Climática
+            risco = "Baixo"; msg = "✅ <b>Clima Seco:</b> Use Protetores (Mancozeb/Cobre)."; estilo = "alert-low"
+            if hoje['Umid'] > 85 or hoje['Chuva'] > 2: risco="ALTO"; msg="🚨 <b>ALERTA UMIDADE:</b> Risco severo. Use <b>SISTÊMICOS</b>."; estilo="alert-high"
             
             c_esq, c_dir = st.columns(2)
             with c_esq:
@@ -294,10 +241,10 @@ if val_w:
             fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='ETc', line=dict(color='#ef4444', width=2)))
             st.plotly_chart(fig, use_container_width=True)
 
-        # ABA 3: RADAR REGIONAL
+        # ABA 3: RADAR
         with tabs[2]:
             st.markdown("### 📡 Monitoramento de Vizinhança (Raio 15km)")
-            st.write(f"Verificando condições climáticas ao redor de suas coordenadas: **{st.session_state['loc_lat']:.4f}, {st.session_state['loc_lon']:.4f}**")
+            st.write(f"Coordenadas: **{st.session_state['loc_lat']:.4f}, {st.session_state['loc_lon']:.4f}**")
             df_radar = get_radar_data(val_w, st.session_state['loc_lat'], st.session_state['loc_lon'])
             if not df_radar.empty:
                 cols = st.columns(4)
@@ -324,7 +271,7 @@ if val_w:
             if c2.button("Lançar"): st.session_state['custos'].append({"Item": i, "Valor": v}); st.success("Salvo")
             if st.session_state['custos']: st.dataframe(pd.DataFrame(st.session_state['custos'])); st.metric("Total", f"R$ {pd.DataFrame(st.session_state['custos'])['Valor'].sum()}")
 
-        # ABA 6: MAPA (FINAL)
+        # ABA 6: MAPA
         with tabs[5]:
             st.markdown("### 🗺️ Mapa da Propriedade")
             c_add_pt, c_mapa = st.columns([1, 3])
