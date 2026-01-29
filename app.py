@@ -26,7 +26,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DATOS (ESTRUTURA À PROVA DE ERROS) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO (ESTRUTURA COMPLETA) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
@@ -56,7 +56,7 @@ BANCO_MASTER = {
     }
 }
 
-# --- 3. MOTORES TÉCNICOS ---
+# --- 3. MOTOR DE PREVISÃO ---
 def get_forecast(lat, lon, api_key, kc, t_base):
     try:
         url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=pt_br"
@@ -82,12 +82,11 @@ def get_forecast(lat, lon, api_key, kc, t_base):
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2822/2822444.png", width=100)
     st.title("Agro-Intel Titan")
-    api_w = st.text_input("OpenWeather Key", value=st.secrets.get("OPENWEATHER_KEY", ""), type="password")
-    api_g = st.text_input("Gemini Key", value=st.secrets.get("GEMINI_KEY", ""), type="password")
+    api_w = st.secrets.get("OPENWEATHER_KEY", "")
+    api_g = st.secrets.get("GEMINI_KEY", "")
     
     st.divider()
     cultura = st.selectbox("Cultura Alvo:", list(BANCO_MASTER.keys()))
-    # Aqui garantimos que a variedade SEMPRE pertença à cultura escolhida
     var = st.selectbox("Cultivar:", list(BANCO_MASTER[cultura]['vars'].keys()))
     fase = st.selectbox("Fase Fenológica:", list(BANCO_MASTER[cultura]['fases'].keys()))
     d_plantio = st.date_input("Início do Ciclo:", date(2025, 11, 25))
@@ -96,76 +95,71 @@ with st.sidebar:
     peso_carga = st.slider("Carga Doblò (kg):", 100, 800, 300)
 
 # --- 5. DASHBOARD PRINCIPAL ---
-st.markdown(f"""<div class="header-box"><h1>🛰️ Fazenda Progresso - Gestão Enterprise</h1><p>Monitoramento: <b>{cultura} - {var}</b></p></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="header-box"><h1>🛰️ Fazenda Progresso - Ibicoara/BA</h1><p>Monitoramento Enterprise: <b>{cultura} - {var}</b></p></div>""", unsafe_allow_html=True)
 
 if api_w:
-    # Captura dados da cultura
-    dados_cultura = BANCO_MASTER[cultura]
-    info_var = dados_cultura['vars'][var]
-    t_base = dados_cultura['t_base']
-    kc = info_var['kc']
-    meta_gda = info_var['gda_meta']
+    # Extração segura de dados do banco
+    base_dados = BANCO_MASTER[cultura]
+    v_info = base_dados['vars'][var]
+    t_base_crop = base_dados['t_base']
+    kc_crop = v_info['kc']
+    meta_gda_crop = v_info['gda_meta']
 
-    df = get_forecast("-13.200", "-41.400", api_w, kc, t_base)
+    df_previsao = get_forecast("-13.200", "-41.400", api_w, kc_crop, t_base_crop)
     
-    if not df.empty:
-        hoje = df.iloc[0]
-        dias_acum = (date.today() - d_plantio).days
-        # Corrigindo o erro de cálculo do GDA
-        gda_atual = dias_acum * df['GDA'].mean()
+    if not df_previsao.empty:
+        hoje = df_previsao.iloc[0]
+        dias_no_campo = (date.today() - d_plantio).days
+        # RESOLVENDO NAMEERROR: Unificando cálculo de GDA
+        gda_acumulado_hoje = dias_no_campo * df_previsao['GDA'].mean()
         
-        # KPIs
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🌡️ Temperatura", f"{hoje['Temp']:.1f}°C")
-        c2.metric("💧 VPD (kPa)", f"{hoje['VPD']}", "Transpiração OK" if 0.5 < hoje['VPD'] < 1.3 else "Alerta")
-        c3.metric("💦 ETc Diária", f"{hoje['ETc']} mm")
-        c4.metric("📅 GDA Acumulado", f"{gda_atual:.0f}", f"Meta: {meta_gda}")
+        # MÉTRICAS TOPO
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("🌡️ Temperatura", f"{hoje['Temp']:.1f}°C")
+        m2.metric("💧 VPD (kPa)", f"{hoje['VPD']}", "Ideal" if 0.5 < hoje['VPD'] < 1.3 else "Atenção")
+        m3.metric("💦 ETc Diária", f"{hoje['ETc']} mm")
+        m4.metric("📅 GDA Acumulado", f"{gda_acumulado_hoje:.0f}", f"Meta: {meta_gda_crop}")
 
-        tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Balanço Hídrico", "👁️ IA Vision", "🗺️ Geo-Satélite", "🚚 Logística"])
+        abas = st.tabs(["🎓 Consultoria Técnica", "📊 Gráficos", "👁️ IA Vision", "🗺️ Mapa", "🚚 Logística"])
 
-        with tabs[0]: # CONSULTORIA
-            dados_fase = BANCO_MASTER[cultura]['fases'][fase]
+        with abas[0]: # CONSULTORIA
+            fase_data = base_dados['fases'][fase]
             
             
 
-            st.markdown(f"### 🔥 Progresso de Maturação: {min(100.0, (gda_atual/meta_gda)*100):.1f}%")
-            st.progress(min(1.0, gda_atual/meta_gda))
+            st.markdown(f"### 🔥 Maturação Térmica: {min(100.0, (gda_acumulado_hoje/meta_gda_crop)*100):.1f}%")
+            st.progress(min(1.0, gda_acumulado_hoje/meta_gda_crop))
             
             if hoje['Umid'] > 85:
-                st.markdown(f'<div class="alert-high">🚨 ALERTA SANITÁRIO: Umidade em {hoje["Umid"]}%. Risco elevado de Requeima. Aplicar Sistêmicos.</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="alert-high">🚨 ALERTA SANITÁRIO: Umidade elevada ({hoje["Umid"]}%). Risco crítico de Requeima. Aplicar Sistêmicos.</div>', unsafe_allow_html=True)
             else:
-                st.markdown(f'<div class="alert-low">✅ CONDIÇÃO SANITÁRIA: Risco baixo. Manter preventivos.</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="alert-low">✅ CONDIÇÃO SANITÁRIA: Risco baixo. Manter fungicidas protetores.</div>', unsafe_allow_html=True)
             
             
 
-            col_a, col_b = st.columns(2)
-            with col_a:
+            c_a, c_b = st.columns(2)
+            with c_a:
                 st.markdown(f"""<div class="tech-card"><div class="tech-header">🧬 Fisiologia & Manejo</div>
-                <p><b>Status:</b> {dados_fase['desc']}</p>
-                <p><b>Fisiologia:</b> {dados_fase['fisio']}</p>
-                <p><b>Biológico:</b> {dados_fase['bio']}</p></div>""", unsafe_allow_html=True)
-            with col_b:
+                <p><b>Estágio:</b> {fase}</p>
+                <p><b>Processo:</b> {fase_data['fisio']}</p>
+                <p><b>Bio-Regenerativo:</b> {fase_data['bio']}</p></div>""", unsafe_allow_html=True)
+            with c_b:
                 st.markdown(f"""<div class="tech-card"><div class="tech-header">🧪 Prescrição Técnica</div>
-                <p><b>Moléculas Sugeridas:</b><br>{dados_fase['quim']}</p></div>""", unsafe_allow_html=True)
+                <p><b>Moléculas Sugeridas:</b><br>{fase_data['quim']}</p></div>""", unsafe_allow_html=True)
 
-        with tabs[1]: # GRÁFICOS
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva (mm)', marker_color='#0288d1'))
-            fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo ETc (mm)', line=dict(color='#d32f2f', width=3)))
-            st.plotly_chart(fig, use_container_width=True)
+        with abas[1]: # GRÁFICOS
+            f_clima = go.Figure()
+            f_clima.add_trace(go.Bar(x=df_previsao['Data'], y=df_previsao['Chuva'], name='Chuva (mm)', marker_color='#0288d1'))
+            f_clima.add_trace(go.Scatter(x=df_previsao['Data'], y=df_previsao['ETc'], name='ETc (mm)', line=dict(color='#d32f2f', width=3)))
+            st.plotly_chart(f_clima, use_container_width=True)
 
-        with tabs[4]: # LOGÍSTICA (Onde estava o erro de colunas)
-            st.markdown("### 🚚 Planejamento de Carga e Frete")
-            dist = 450 # Ibicoara -> Salvador
-            consumo = 10 # km/l
-            comb = 6.20
-            custo_est = (dist / consumo) * comb
-            
-            # Aqui definimos as colunas localmente para evitar erros de escopo
-            col_l1, col_l2 = st.columns(2)
-            col_l1.metric("Custo Combustível", f"R$ {custo_est:.2f}")
-            col_l2.metric("Custo por kg", f"R$ {custo_est/peso_carga:.2f}")
-            st.info(f"Ocupação da Doblò: {(peso_carga/800)*100:.1f}% da capacidade máxima.")
+        with abas[4]: # LOGÍSTICA
+            st.markdown("### 🚚 Planejamento Doblò Cargo")
+            custo_viagem = (450 / 10) * 6.20 # Ibicoara -> Salvador
+            l1, l2 = st.columns(2)
+            l1.metric("Custo Combustível (Est.)", f"R$ {custo_viagem:.2f}")
+            l2.metric("Custo/kg", f"R$ {custo_viagem/peso_carga:.2f}")
+            st.info(f"Ocupação: {(peso_carga/800)*100:.1f}% da suspensão.")
 
 else:
-    st.warning("⚠️ Insira a chave OpenWeather no menu lateral.")
+    st.error("⚠️ Erro: OPENWEATHER_KEY não encontrada nos Secrets.")
