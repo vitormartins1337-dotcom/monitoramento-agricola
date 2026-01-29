@@ -15,16 +15,20 @@ from streamlit_google_auth import Authenticate
 st.set_page_config(page_title="Agro-Intel Enterprise", page_icon="🛰️", layout="wide")
 
 # --- LOGIN REAL COM GOOGLE OAUTH 2.0 ---
-# O sistema busca as chaves nos Secrets do Streamlit Cloud
 try:
+    # IMPORTANTE: A URL abaixo deve ser a URL do seu app no Streamlit Cloud
+    # Altere para a sua URL final para evitar erro de redirecionamento
+    URL_DO_APP = "https://monitoramento-agricola.streamlit.app" 
+
     authenticator = Authenticate(
         secret_names=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
         cookie_name="agro_intel_session",
         key="agro_secret_key_2026", 
         cookie_expiry_days=30,
+        redirect_uri=URL_DO_APP
     )
 except Exception as e:
-    st.error("Erro Crítico: Chaves de autenticação não encontradas no servidor.")
+    st.error(f"Erro Crítico na Autenticação: {e}")
     st.stop()
 
 # Verifica autenticação
@@ -51,8 +55,12 @@ USER_NAME = st.session_state.get('name', 'Produtor')
 USER_PIC = st.session_state.get('picture', "https://cdn-icons-png.flaticon.com/512/3135/3135715.png")
 
 # --- CARREGAMENTO DE CHAVES API (BACKEND) ---
-WEATHER_KEY = st.secrets["OPENWEATHER_KEY"]
-GEMINI_KEY = st.secrets["GEMINI_KEY"]
+try:
+    WEATHER_KEY = st.secrets["OPENWEATHER_KEY"]
+    GEMINI_KEY = st.secrets["GEMINI_KEY"]
+except:
+    st.error("Erro: Verifique se OPENWEATHER_KEY e GEMINI_KEY estão configurados no painel Secrets do Streamlit.")
+    st.stop()
 
 # --- ESTILIZAÇÃO CSS ENTERPRISE ---
 st.markdown("""
@@ -235,8 +243,6 @@ if not df.empty:
     with tabs[0]:
         dados = BANCO_MASTER[cultura_sel]['fases'][fase_sel]
         
-        
-
         st.markdown(f"""<div class="gda-box"><h3>🔥 Acúmulo Térmico (GDA): {gda_acum:.0f} / {meta_gda}</h3></div>""", unsafe_allow_html=True)
         st.progress(progresso_gda)
         
