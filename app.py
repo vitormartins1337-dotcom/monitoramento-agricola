@@ -14,25 +14,28 @@ from streamlit_google_auth import Authenticate
 # --- 1. CONFIGURAÇÃO DE ALTO NÍVEL ---
 st.set_page_config(page_title="Agro-Intel Enterprise", page_icon="🛰️", layout="wide")
 
-# --- LOGIN REAL COM GOOGLE (VERSÃO COMPATÍVEL 2026) ---
+# --- LOGIN REAL COM GOOGLE (CALIBRAÇÃO POSICIONAL) ---
 try:
-    # URL do seu app (Certifique-se que é EXATAMENTE essa no Google Cloud Console)
+    # URL oficial do seu app (Certifique-se que no Google Console está igual!)
     URL_DO_APP = "https://monitoramento-agricola.streamlit.app" 
 
-    # Inicializa o autenticador sem a função que deu erro
+    # Se a biblioteca rejeita nomes de argumentos, passamos os valores na ordem exata:
+    # 1. ID, 2. Secret, 3. Redirect URI, 4. Cookie Name, 5. Cookie Key, 6. Expiry
     authenticator = Authenticate(
-        secret_names=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
-        cookie_name="agro_intel_session",
-        key="agro_secret_key_2026", 
-        cookie_expiry_days=30,
-        redirect_uri=URL_DO_APP
+        st.secrets["GOOGLE_CLIENT_ID"],
+        st.secrets["GOOGLE_CLIENT_SECRET"],
+        URL_DO_APP,
+        "agro_intel_session",
+        "agro_secret_key_2026",
+        30
     )
 except Exception as e:
-    st.error(f"Erro na inicialização: {e}")
+    st.error(f"Erro na configuração: {e}. Verifique se os nomes no painel Secrets estão corretos.")
     st.stop()
 
-# --- LOGICA DE LOGIN SEM 'check_authenticity' ---
-# O sistema agora verifica o estado da conexão diretamente
+# Tenta validar o login
+authenticator.check_authenticity()
+
 if not st.session_state.get('connected'):
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
@@ -47,12 +50,12 @@ if not st.session_state.get('connected'):
         authenticator.login()
         st.stop()
 
-# --- DADOS DO USUÁRIO ---
+# --- VARIÁVEIS DE AMBIENTE ---
 USER_EMAIL = st.session_state.get('email')
 USER_NAME = st.session_state.get('name', 'Engenheiro Agrônomo')
 USER_PIC = st.session_state.get('picture', "https://cdn-icons-png.flaticon.com/512/3135/3135715.png")
 
-# --- CARREGAMENTO DE CHAVES API ---
+# Carregamento das chaves de inteligência
 WEATHER_KEY = st.secrets["OPENWEATHER_KEY"]
 GEMINI_KEY = st.secrets["GEMINI_KEY"]
 
@@ -67,22 +70,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS AGRONÔMICO ---
+# --- 2. BANCO DE DADOS AGRONÔMICO (BATATA E CAFÉ) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
         "vars": {
             "Orchestra": {"kc": 1.15, "gda_meta": 1600, "info": "Pele lisa premium."},
             "Cupido": {"kc": 1.10, "gda_meta": 1400, "info": "Ciclo ultra-curto."},
-            "Camila": {"kc": 1.15, "gda_meta": 1550, "info": "Mercado fresco."},
+            "Camila": {"kc": 1.15, "gda_meta": 1550, "info": "Referência mercado fresco."},
             "Atlantic": {"kc": 1.15, "gda_meta": 1650, "info": "Indústria (Chips)."}
         },
         "fases": {
             "Emergência (0-20 dias)": {"desc": "Brotamento inicial.", "fisiologia": "Uso de reservas do tubérculo.", "manejo": "Solo aerado.", "quimica": "Azoxistrobina + Tiametoxam."},
             "Vegetativo (20-35 dias)": {"desc": "Expansão foliar.", "fisiologia": "Demanda de N.", "manejo": "Amontoa técnica.", "quimica": "Mancozeb."},
-            "Tuberização/Gancho (35-55 dias)": {"desc": "Diferenciação de tubérculos.", "fisiologia": "Inversão hormonal.", "manejo": "Irrigação de precisão.", "quimica": "Revus (Mandipropamida)."},
+            "Tuberização/Gancho (35-55 dias)": {"desc": "Diferenciação de tubérculos.", "fisiologia": "Inversão hormonal.", "manejo": "Irrigação de precisão.", "quimica": "Revus."},
             "Enchimento (55-85 dias)": {"desc": "Acúmulo de matéria seca.", "fisiologia": "Dreno de K e Mg.", "manejo": "Sanidade foliar.", "quimica": "Benévia."},
-            "Maturação (85+ dias)": {"desc": "Cura da pele (suberização).", "fisiologia": "Finalização térmica.", "manejo": "Dessecação.", "quimica": "Diquat."}
+            "Maturação (85+ dias)": {"desc": "Cura da pele.", "fisiologia": "Finalização térmica.", "manejo": "Dessecação.", "quimica": "Diquat."}
         }
     }
 }
@@ -108,7 +111,7 @@ def get_forecast(lat, lon, kc, t_base):
 # --- 4. SIDEBAR ---
 with st.sidebar:
     st.image(USER_PIC, width=80)
-    st.markdown(f"**{USER_NAME}**")
+    st.markdown(f"👤 **{USER_NAME}**")
     st.caption(USER_EMAIL)
     if st.button("🚪 Logout"):
         authenticator.logout()
@@ -116,8 +119,8 @@ with st.sidebar:
     st.divider()
     cultura_sel = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
     var_sel = st.selectbox("Variedade:", list(BANCO_MASTER[cultura_sel]['vars'].keys()))
-    fase_sel = st.selectbox("Estágio:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
-    d_plantio = st.date_input("Início do Ciclo:", date(2025, 11, 25))
+    fase_sel = st.selectbox("Estágio Fenológico:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
+    d_plantio = st.date_input("Data de Plantio:", date(2025, 11, 25))
     info_v = BANCO_MASTER[cultura_sel]['vars'][var_sel]
 
 # --- 5. DASHBOARD ---
@@ -132,7 +135,7 @@ if not df.empty:
     st.markdown(f"""
     <div class="header-box">
         <h2>{cultura_sel} - {var_sel}</h2>
-        <p style="font-size:1.1em"><b>{dias} Dias de Ciclo</b> | Fase Atual: {fase_sel}</p>
+        <p style="font-size:1.1em"><b>{dias} Dias de Ciclo</b> | Estágio: {fase_sel}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -152,7 +155,6 @@ if not df.empty:
         st.markdown(f"### 🔥 Acúmulo Térmico (GDA): {gda_acum:.0f} / {meta_gda}")
         st.progress(min(1.0, gda_acum/meta_gda))
         
-        # Alerta de Risco Fitossanitário (Baseado na Umidade Relativa)
         estilo = "alert-low" if hoje['Umid'] < 85 else "alert-high"
         msg = "✅ Condição desfavorável a fungos." if estilo == "alert-low" else "🚨 ALERTA: Risco elevado de Requeima."
         
@@ -169,6 +171,6 @@ if not df.empty:
         st.markdown(f"### 🔔 Central de Alertas")
         st.info(f"Sincronizado com: **{USER_EMAIL}**")
         if st.button("Ativar Relatórios Automáticos"):
-            st.success(f"Protocolo ativo! Relatórios de GDA e risco sanitário serão enviados para {USER_EMAIL}")
+            st.success(f"Protocolo ativo para {USER_EMAIL}!")
 else:
     st.error("⚠️ Erro ao carregar dados de satélite.")
