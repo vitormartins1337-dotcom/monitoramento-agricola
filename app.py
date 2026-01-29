@@ -27,7 +27,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ENCICLOPÉDIA AGRONÔMICA (EXPANDIDA) ---
+# --- 2. ENCICLOPÉDIA AGRONÔMICA (MANTIDA INTACTA) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
@@ -180,7 +180,6 @@ def get_forecast(api_key, lat, lon, kc, t_base):
     except: return pd.DataFrame()
 
 def get_radar_data(api_key, lat, lon):
-    # Simula um radar buscando pontos a 15km (aprox 0.15 graus) nas 4 direções
     pontos = {
         "Norte (15km)": (lat + 0.15, lon),
         "Sul (15km)": (lat - 0.15, lon),
@@ -204,7 +203,6 @@ def get_radar_data(api_key, lat, lon):
 # --- 4. CONFIGURAÇÃO (SIDEBAR) ---
 url_w, url_g = get_credentials()
 
-# Estado Global de Localização
 if 'loc_lat' not in st.session_state: st.session_state['loc_lat'] = -13.414
 if 'loc_lon' not in st.session_state: st.session_state['loc_lon'] = -41.285
 if 'pontos_mapa' not in st.session_state: st.session_state['pontos_mapa'] = []
@@ -218,7 +216,6 @@ with st.sidebar:
 
     st.divider()
     
-    # PAINEL DE LOCALIZAÇÃO (NOVO!)
     st.markdown("### 📍 Localização da Propriedade")
     tab_busca, tab_coord = st.tabs(["🔍 Cidade", "🌐 Coordenadas"])
     with tab_busca:
@@ -240,24 +237,32 @@ with st.sidebar:
     cultura_sel = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
     var_sel = st.selectbox("Cultivar:", list(BANCO_MASTER[cultura_sel]['vars'].keys()))
     fase_sel = st.selectbox("Fase Atual:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
+    
+    # INPUT DE DATA DE PLANTIO
     if 'd_plantio' not in st.session_state: st.session_state['d_plantio'] = date(2025, 11, 25)
-    d_plantio = st.date_input("Início:", st.session_state['d_plantio'])
+    d_plantio = st.date_input("Início do Ciclo:", st.session_state['d_plantio'])
     info_v = BANCO_MASTER[cultura_sel]['vars'][var_sel]
 
 # --- 5. DASHBOARD ---
-st.title("🛰️ Agro-Intel Expert v17.0")
+st.title("🛰️ Agro-Intel Expert v17.1")
 
 if val_w:
-    # Previsão baseada na Localização Definida no Sidebar
     df = get_forecast(val_w, st.session_state['loc_lat'], st.session_state['loc_lon'], info_v['kc'], BANCO_MASTER[cultura_sel]['t_base'])
     
     if not df.empty:
         hoje = df.iloc[0]
         
+        # --- CÁLCULO DOS DIAS DE CAMPO ---
+        dias_campo = (date.today() - d_plantio).days
+        
+        # --- HEADER COM O DADO DOS DIAS ---
         st.markdown(f"""
         <div class="header-box">
             <h2>Gestão: {cultura_sel} - {var_sel}</h2>
-            <p style="font-size:1.1em">Fase: <b>{fase_sel}</b> | 🧬 Genética: {info_v['info']}</p>
+            <p style="font-size:1.2em">
+                📆 <b>Idade da Lavoura: {dias_campo} dias</b> | Fase: <b>{fase_sel}</b>
+            </p>
+            <p>🧬 Genética: {info_v['info']}</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -267,10 +272,9 @@ if val_w:
         c3.metric("💦 ETc", f"{hoje['ETc']} mm", f"Kc: {info_v['kc']}")
         c4.metric("🛡️ Delta T", f"{hoje['Delta T']}°C", "Ok" if 2 <= hoje['Delta T'] <= 8 else "Ruim")
 
-        # NOVA ORDEM DAS ABAS (Radar Novo, Mapa no Final)
         tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Água", "📡 Radar Regional", "👁️ IA Vision", "💰 Custos", "🗺️ Mapa da Fazenda"])
 
-        # ABA 1: CONSULTORIA TÉCNICA (MELHORADA)
+        # ABA 1: CONSULTORIA TÉCNICA
         with tabs[0]:
             dados = BANCO_MASTER[cultura_sel]['fases'][fase_sel]
             risco = "Baixo"; msg = "✅ <b>Clima Seco:</b> Use Protetores (Mancozeb/Cobre). Baixo risco de infecção."; estilo = "alert-low"
@@ -290,31 +294,19 @@ if val_w:
             fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='ETc', line=dict(color='#ef4444', width=2)))
             st.plotly_chart(fig, use_container_width=True)
 
-        # ABA 3: RADAR REGIONAL (NOVA!)
+        # ABA 3: RADAR REGIONAL
         with tabs[2]:
             st.markdown("### 📡 Monitoramento de Vizinhança (Raio 15km)")
             st.write(f"Verificando condições climáticas ao redor de suas coordenadas: **{st.session_state['loc_lat']:.4f}, {st.session_state['loc_lon']:.4f}**")
-            
             df_radar = get_radar_data(val_w, st.session_state['loc_lat'], st.session_state['loc_lon'])
-            
             if not df_radar.empty:
                 cols = st.columns(4)
                 for idx, row in df_radar.iterrows():
                     cor = "#ffebee" if row['Chuva'] == "Sim" else "#e8f5e9"
                     with cols[idx]:
-                        st.markdown(f"""
-                        <div class="radar-card" style="background-color: {cor}">
-                            <b>{row['Direcao']}</b><br>
-                            <span style="font-size: 1.5em">{row['Temp']:.0f}°C</span><br>
-                            {row['Clima']}<br>
-                            <small>Chuva: {row['Chuva']}</small>
-                        </div>
-                        """, unsafe_allow_html=True)
-                
-                if "Sim" in df_radar['Chuva'].values:
-                    st.warning("⚠️ Chuva detectada nas proximidades! Fique alerta para rajadas de vento ou pancadas isoladas.")
-                else:
-                    st.success("✅ Estabilidade climática na região.")
+                        st.markdown(f"""<div class="radar-card" style="background-color: {cor}"><b>{row['Direcao']}</b><br><span style="font-size: 1.5em">{row['Temp']:.0f}°C</span><br>{row['Clima']}<br><small>Chuva: {row['Chuva']}</small></div>""", unsafe_allow_html=True)
+                if "Sim" in df_radar['Chuva'].values: st.warning("⚠️ Chuva detectada nas proximidades!")
+                else: st.success("✅ Estabilidade climática na região.")
 
         # ABA 4: IA
         with tabs[3]:
@@ -332,42 +324,31 @@ if val_w:
             if c2.button("Lançar"): st.session_state['custos'].append({"Item": i, "Valor": v}); st.success("Salvo")
             if st.session_state['custos']: st.dataframe(pd.DataFrame(st.session_state['custos'])); st.metric("Total", f"R$ {pd.DataFrame(st.session_state['custos'])['Valor'].sum()}")
 
-        # ABA 6: MAPA (AGORA NO FINAL)
+        # ABA 6: MAPA (FINAL)
         with tabs[5]:
             st.markdown("### 🗺️ Mapa da Propriedade")
             c_add_pt, c_mapa = st.columns([1, 3])
-            
             with c_add_pt:
-                st.info("Para adicionar um ponto, clique no mapa e depois preencha abaixo.")
-                nome_pt = st.text_input("Nome do Talhão (Ex: Pivô 01)")
+                st.info("Para adicionar um ponto, clique no mapa.")
+                nome_pt = st.text_input("Nome do Talhão")
                 if st.session_state.get('last_click'):
                     st.caption(f"Lat: {st.session_state['last_click'][0]:.4f}, Lon: {st.session_state['last_click'][1]:.4f}")
                     if st.button("💾 Salvar Ponto") and nome_pt:
                         st.session_state['pontos_mapa'].append({"nome": nome_pt, "lat": st.session_state['last_click'][0], "lon": st.session_state['last_click'][1]})
                         st.success("Salvo!")
                         st.rerun()
-                
                 if st.session_state['pontos_mapa']:
-                    st.divider()
-                    st.write("**Pontos Salvos:**")
+                    st.divider(); st.write("**Pontos Salvos:**")
                     for p in st.session_state['pontos_mapa']: st.write(f"📍 {p['nome']}")
 
             with c_mapa:
                 m = folium.Map(location=[st.session_state['loc_lat'], st.session_state['loc_lon']], zoom_start=14)
                 folium.TileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri', name='Satélite').add_to(m)
-                LocateControl().add_to(m)
-                Fullscreen().add_to(m)
-                
-                # Marcador Central (Sua Localização)
+                LocateControl().add_to(m); Fullscreen().add_to(m)
                 folium.Marker([st.session_state['loc_lat'], st.session_state['loc_lon']], popup="Sede", icon=folium.Icon(color='red', icon='home')).add_to(m)
-                
-                for p in st.session_state['pontos_mapa']:
-                    folium.Marker([p['lat'], p['lon']], popup=p['nome'], icon=folium.Icon(color='green', icon='leaf')).add_to(m)
-                
+                for p in st.session_state['pontos_mapa']: folium.Marker([p['lat'], p['lon']], popup=p['nome'], icon=folium.Icon(color='green', icon='leaf')).add_to(m)
                 out = st_folium(m, width="100%", height=500, returned_objects=["last_clicked"])
-                if out["last_clicked"]:
-                    st.session_state['last_click'] = (out["last_clicked"]["lat"], out["last_clicked"]["lng"])
-                    st.rerun()
+                if out["last_clicked"]: st.session_state['last_click'] = (out["last_clicked"]["lat"], out["last_clicked"]["lng"]); st.rerun()
 
 else:
     st.warning("⚠️ Configure suas chaves no menu lateral para iniciar.")
