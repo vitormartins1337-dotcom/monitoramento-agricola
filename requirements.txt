@@ -6,4 +6,3 @@ google-generativeai
 Pillow
 folium
 streamlit-folium
-streamlit-google-auth
