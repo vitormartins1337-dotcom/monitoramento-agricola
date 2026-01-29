@@ -3,105 +3,63 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 import math
+import google.generativeai as genai
+from PIL import Image
 from datetime import datetime, date
 
-# --- 1. CONFIGURAÇÃO VISUAL ---
+# --- 1. CONFIGURAÇÃO VISUAL DE ELITE ---
 st.set_page_config(
-    page_title="Agro-Intel Chapada Pro",
-    page_icon="🧪",
+    page_title="Agro-Intel 4.0",
+    page_icon="🌿",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# CSS Profissional
 st.markdown("""
 <style>
-    div[data-testid="metric-container"] { background-color: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
-    .genetica-box { background: linear-gradient(to right, #1565c0, #42a5f5); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .alerta-box { background-color: #ffebee; border-left: 5px solid #d32f2f; padding: 15px; margin-top: 10px; border-radius: 5px; }
-    .manejo-box { background-color: #e8f5e9; border-left: 5px solid #2e7d32; padding: 15px; margin-top: 10px; border-radius: 5px; }
-    h3 { margin-top: 0; }
+    .main { background-color: #f8f9fa; }
+    div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e0e0e0; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .genetica-header { background: linear-gradient(135deg, #1b5e20 0%, #4caf50 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; background-color: #fff; border-radius: 5px; border: 1px solid #ddd; }
+    .stTabs [aria-selected="true"] { background-color: #e8f5e9; border-color: #2e7d32; color: #2e7d32; font-weight: bold; }
+    .financeiro-box { border-left: 5px solid #fbc02d; background-color: #fffde7; padding: 15px; border-radius: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CÉREBRO AGRONÔMICO (Manejo & Química) ---
-BANCO_AGRONOMICO = {
-    "Batata (Solanum tuberosum)": {
-        "variedades": {
-            "Orchestra": {"ciclo": 110, "kc": 1.15, "info": "Exigente em Potássio. Sensível a Pinta Preta."},
-            "Cupido": {"ciclo": 90, "kc": 1.10, "info": "Ciclo curto. Altíssima sensibilidade a Requeima."},
-            "Camila": {"ciclo": 100, "kc": 1.15, "info": "Pele sensível. Cuidado com sarna."},
-            "Atlantic": {"ciclo": 105, "kc": 1.15, "info": "Chips. Evitar oscilação hídrica (Coração Oco)."}
+# --- 2. BANCO DE DADOS AGRONÔMICO (CHAPADA DIAMANTINA) ---
+BANCO_AGRO = {
+    "Batata": {
+        "vars": {
+            "Orchestra": {"kc": 1.15, "info": "Exigente em K. Cuidado com Pinta Preta."},
+            "Cupido": {"kc": 1.10, "info": "Ciclo Curto. Sensível a Requeima."},
+            "Camila": {"kc": 1.15, "info": "Pele sensível. Sarna."},
+            "Atlantic": {"kc": 1.15, "info": "Chips. Coração Oco."}
         },
-        "fases": {
-            "Vegetativo": {
-                "manejo": "Realizar a Amontoa (Chegar terra) para proteger estolões. Monitorar Larva Minadora.",
-                "risco": ["Larva Minadora", "Rizoctonia"],
-                "moleculas": "Abamectina (Minadora), Azoxistrobina (Solo)."
-            },
-            "Tuberização (Crítico)": {
-                "manejo": "Irrigação constante. Fase crítica para definição de calibre. Não deixar faltar água.",
-                "risco": ["Requeima (Phytophthora)", "Pinta Preta (Alternaria)"],
-                "moleculas": "Preventivo: Mancozeb/Clorotalonil. Curativo: Metalaxil-M, Dimetomorfe, Mandipropamida."
-            },
-            "Maturação": {
-                "manejo": "Dessecação da rama. Cuidado com danos mecânicos na colheita.",
-                "risco": ["Traça da Batata", "Sarna"],
-                "moleculas": "Cipermetrina (Traça). Evitar excesso de água para não dar Sarna."
-            }
-        }
+        "fases": ["Vegetativo", "Tuberização", "Enchimento", "Maturação"]
     },
-    "Mirtilo (Vaccinium spp.)": {
-        "variedades": {
-            "Emerald": {"ciclo": 150, "kc": 0.95, "info": "Vigorosa. Atenção ao pH (4.5-5.5)."},
-            "Biloxi": {"ciclo": 160, "kc": 0.90, "info": "Ereta. Exige poda de limpeza central."}
+    "Mirtilo": {
+        "vars": {
+            "Emerald": {"kc": 0.95, "info": "Vigorosa. pH ácido (4.5)."},
+            "Biloxi": {"kc": 0.90, "info": "Poda de limpeza central."}
         },
-        "fases": {
-            "Poda/Dormência": {
-                "manejo": "Aplicação de Cianamida Hidrogenada (se necessário) para uniformizar brotação.",
-                "risco": ["Cochonilhas"],
-                "moleculas": "Óleo Mineral + Imidacloprido."
-            },
-            "Florada": {
-                "manejo": "Introduzir abelhas (Bombus ou Apis). Evitar inseticidas fortes.",
-                "risco": ["Botrytis (Mofo Cinzento)"],
-                "moleculas": "Fludioxonil, Ciprodinil (Seguros para abelhas à noite)."
-            },
-            "Frutificação": {
-                "manejo": "Fertirrigação sem Nitratos (usar Amônio). Monitorar Ferrugem.",
-                "risco": ["Ferrugem", "Antracnose"],
-                "moleculas": "Tebuconazol (Cuidado com carência), Azoxistrobina."
-            }
-        }
+        "fases": ["Brotação", "Florada", "Fruto Verde", "Colheita"]
     },
-    "Morango (Fragaria x ananassa)": {
-        "variedades": {
-            "San Andreas": {"ciclo": 180, "kc": 0.85, "info": "Dia neutro. Sensível a Ácaro Rajado."},
-            "Albion": {"ciclo": 180, "kc": 0.85, "info": "Fruto doce. Sensível a Oídio."}
+    "Morango": {
+        "vars": {
+            "San Andreas": {"kc": 0.85, "info": "Sensível a Ácaros."},
+            "Albion": {"kc": 0.85, "info": "Qualidade de fruto."}
         },
-        "fases": {
-            "Vegetativo": {
-                "manejo": "Retirada de estolões para focar em coroa. Limpeza de folhas velhas.",
-                "risco": ["Oídio", "Pulgão"],
-                "moleculas": "Enxofre (Oídio), Acetamiprido (Pulgão)."
-            },
-            "Frutificação": {
-                "manejo": "Aplicação de Cálcio e Silício. Colheita frequente.",
-                "risco": ["Botrytis", "Ácaro Rajado"],
-                "moleculas": "Abamectina/Etoxazol (Ácaros). Iprodiona (Botrytis)."
-            }
-        }
+        "fases": ["Vegetativo", "Florada", "Frutificação", "Colheita"]
+    },
+    "Café": {
+        "vars": {"Catuaí": {"kc": 1.1, "info": "Ferrugem."}, "Arara": {"kc": 1.2, "info": "Cercospora."}},
+        "fases": ["Vegetativo", "Florada", "Chumbinho", "Granação"]
     }
 }
 
-# --- DADOS FIXOS ---
-FAZENDA = {"nome": "Ibicoara (Sede)", "lat": "-13.414", "lon": "-41.285"}
-VIZINHOS = [
-    {"nome": "Mucugê", "lat": "-13.005", "lon": "-41.371"},
-    {"nome": "Barra da Estiva", "lat": "-13.623", "lon": "-41.326"},
-    {"nome": "Cascavel (Distrito)", "lat": "-13.196", "lon": "-41.445"}
-]
-
-# --- 3. CÉREBRO CIENTÍFICO ---
+# --- 3. FUNÇÕES CIENTÍFICAS ---
 def calc_agro(temp, umid):
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
     ea = es * (umid / 100)
@@ -110,7 +68,7 @@ def calc_agro(temp, umid):
     dt = round(temp - tw, 1)
     return dt, vpd
 
-def get_forecast(api_key, lat, lon, kc_max):
+def get_forecast(api_key, lat, lon, kc):
     try:
         url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric&lang=pt_br"
         r = requests.get(url).json()
@@ -127,126 +85,170 @@ def get_forecast(api_key, lat, lon, kc_max):
                 'VPD': vpd,
                 'Delta T': dt,
                 'Umid': item['main']['humidity'],
-                'ETc': round(et0 * kc_max, 2)
+                'ETc': round(et0 * kc, 2)
             })
         return pd.DataFrame(dados)
     except: return pd.DataFrame()
 
-# --- 4. SIDEBAR ---
+def analise_ia_gemini(api_key, imagem, cultura, contexto_clima):
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = f"""
+        Você é um Engenheiro Agrônomo Sênior especialista em Fitopatologia.
+        Analise esta imagem de uma folha de {cultura}.
+        Contexto Climático atual: {contexto_clima}.
+        1. Identifique a possível doença ou deficiência.
+        2. Explique por que o clima atual favorece ou não isso.
+        3. Sugira o ingrediente ativo (químico) e uma solução biológica.
+        Seja direto e técnico.
+        """
+        response = model.generate_content([prompt, imagem])
+        return response.text
+    except Exception as e:
+        return f"Erro na IA: {str(e)}. Verifique a Chave API."
+
+# --- 4. SIDEBAR DE COMANDO ---
 with st.sidebar:
-    st.header("🎛️ Controle da Lavoura")
-    api_key = st.text_input("🔑 Chave API", type="password")
+    st.header("🎛️ Centro de Comando")
+    
+    with st.expander("🔑 Credenciais (APIs)", expanded=True):
+        weather_key = st.text_input("OpenWeather Key", type="password")
+        gemini_key = st.text_input("Google Gemini AI Key", type="password", help="Para o diagnóstico por foto")
+    
     st.divider()
     
-    cultura = st.selectbox("1. Cultura:", list(BANCO_AGRONOMICO.keys()))
-    lista_vars = list(BANCO_AGRONOMICO[cultura]['variedades'].keys())
-    variedade = st.selectbox("2. Cultivar:", lista_vars)
+    cultura_sel = st.selectbox("Cultura:", list(BANCO_AGRO.keys()))
+    var_sel = st.selectbox("Variedade:", list(BANCO_AGRO[cultura_sel]['vars'].keys()))
+    fase_sel = st.selectbox("Fase Fenológica:", BANCO_AGRO[cultura_sel]['fases'], index=1)
     
-    # Busca Info
-    info_cultura = BANCO_AGRONOMICO[cultura]
-    info_var = info_cultura['variedades'][variedade]
-    lista_fases = list(info_cultura['fases'].keys())
+    # Memória de Plantio (Session State)
+    if 'data_plantio' not in st.session_state:
+        st.session_state['data_plantio'] = date(2025, 11, 25)
     
-    data_plantio = st.date_input("3. Data Início:", date(2025, 11, 25))
-    dias_campo = (date.today() - data_plantio).days
+    d_plantio = st.date_input("Data Plantio:", st.session_state['data_plantio'])
+    dias_campo = (date.today() - d_plantio).days
     
-    fase_atual = st.selectbox("4. Fase Fenológica:", lista_fases, index=1)
-    
-    st.info(f"🧬 **{variedade}**\nIdade: {dias_campo} dias")
+    info = BANCO_AGRO[cultura_sel]['vars'][var_sel]
+    st.info(f"🧬 **{var_sel}** | Idade: {dias_campo} dias | Kc: {info['kc']}")
 
-# --- 5. DASHBOARD ---
-st.title("🛰️ Agro-Intel v6.0")
+# --- 5. DASHBOARD PRINCIPAL ---
+st.title("🛰️ Agro-Intel System v7.0")
 
-if api_key:
-    # Dados da Fase Selecionada
-    dados_fase = info_cultura['fases'][fase_atual]
-
+if weather_key:
+    # CABEÇALHO
     st.markdown(f"""
-    <div class="genetica-box">
-        <h3>🚜 {cultura.split('(')[0]} - {variedade} ({fase_atual})</h3>
-        <p>{info_var['info']}</p>
+    <div class="genetica-header">
+        <h2 style="margin:0; color:white;">🚜 {cultura_sel} - {var_sel}</h2>
+        <p style="margin:0; opacity:0.9;">Fase: {fase_sel} | Ponto de Atenção: {info['info']}</p>
     </div>
     """, unsafe_allow_html=True)
 
-    df = get_forecast(api_key, FAZENDA['lat'], FAZENDA['lon'], info_var['kc'])
+    # DADOS CLIMÁTICOS
+    lat, lon = "-13.414", "-41.285" # Ibicoara
+    df = get_forecast(weather_key, lat, lon, info['kc'])
     
     if not df.empty:
         hoje = df.iloc[0]
         
         # KPIS
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🌡️ Temperatura", f"{hoje['Temp']} °C", f"Umid: {hoje['Umid']}%")
-        c2.metric("💧 VPD", f"{hoje['VPD']} kPa", "Ideal" if 0.4 <= hoje['VPD'] <= 1.3 else "Risco")
-        c3.metric("💦 ETc (Consumo)", f"{hoje['ETc']} mm", f"Kc: {info_var['kc']}")
-        c4.metric("🛡️ Delta T", f"{hoje['Delta T']} °C", "Ok" if 2 <= hoje['Delta T'] <= 8 else "Ruim")
+        c1.metric("🌡️ Temperatura", f"{hoje['Temp']}°C", f"Umid: {hoje['Umid']}%")
+        c2.metric("💧 VPD (Pressão)", f"{hoje['VPD']} kPa", "Risco" if hoje['VPD'] > 1.3 else "Ideal")
+        c3.metric("💦 ETc (Consumo)", f"{hoje['ETc']} mm", f"Kc: {info['kc']}")
+        c4.metric("🛡️ Delta T", f"{hoje['Delta T']}°C", "Pulverizar" if 2 <= hoje['Delta T'] <= 8 else "Parar")
 
-        # ABAS PRINCIPAIS
-        tab1, tab2, tab3 = st.tabs(["📚 Protocolo Agronômico", "📊 Clima & Irrigação", "📡 Radar GPS"])
+        # NAVEGAÇÃO
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 Clima & Hídrico", "👁️ IA Vision (Diagnóstico)", "💰 Gestão Financeira", "📡 Radar GPS"])
 
+        # --- ABA 1: CLIMA ---
         with tab1:
-            st.markdown("### 📋 Planejamento Técnico da Semana")
-            
-            col_tec1, col_tec2 = st.columns(2)
-            
-            with col_tec1:
-                st.markdown(f"""
-                <div class="manejo-box">
-                    <h4>🛠️ Manejo Cultural ({fase_atual})</h4>
-                    <p>{dados_fase['manejo']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Análise de Risco Climático para Doenças
-                risco_clima = "Baixo"
-                if hoje['Umid'] > 85 or hoje['Chuva'] > 2:
-                    risco_clima = "ALTO (Umidade Elevada)"
-                    cor_risco = "red"
-                else:
-                    cor_risco = "green"
-                
-                st.write(f"**Pressão Climática Hoje:** :{cor_risco}[{risco_clima}]")
-
-            with col_tec2:
-                st.markdown(f"""
-                <div class="alerta-box">
-                    <h4>💊 Farmácia Digital (Defensivos Sugeridos)</h4>
-                    <p><b>Alvos Principais:</b> {', '.join(dados_fase['risco'])}</p>
-                    <hr>
-                    <p><b>🧪 Moléculas Indicadas:</b><br>{dados_fase['moleculas']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if risco_clima == "ALTO (Umidade Elevada)":
-                    st.warning("⚠️ **Dica de Especialista:** Com a umidade alta detectada hoje, priorize produtos **SISTÊMICOS** ou de **PROFUNDIDADE**, pois produtos de contato podem ser lavados ou não ter eficácia curativa.")
-                else:
-                    st.success("✅ **Dica de Especialista:** Clima seco. Ótimo momento para produtos de **CONTATO/PROTETORES** (Mancozeb, Cobre, Enxofre) para blindar a planta.")
-
-            st.caption("⚠️ Nota: As moléculas citadas são referências técnicas de Ingrediente Ativo. Consulte sempre um Receituário Agronômico para marcas comerciais e doses.")
-
-        with tab2:
             fig = go.Figure()
             fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva', marker_color='#29b6f6'))
             fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo (ETc)', line=dict(color='#ef5350', width=2)))
-            fig.update_layout(title="Balanço Hídrico", height=350)
+            fig.update_layout(title="Balanço Hídrico Semanal", height=350)
             st.plotly_chart(fig, use_container_width=True)
             
             balanco = df['Chuva'].sum() - df['ETc'].sum()
-            st.info(f"Balanço Semanal: {balanco:.1f} mm")
+            st.info(f"Balanço: {balanco:.1f} mm. (Positivo = Sobra, Negativo = Falta).")
 
+        # --- ABA 2: IA VISION (GEMINI) ---
+        with tab2:
+            st.markdown("### 🔬 Diagnóstico Fitopatológico com IA")
+            st.write("Tire uma foto da folha ou carregue uma imagem para análise imediata.")
+            
+            col_cam, col_res = st.columns([1, 2])
+            
+            with col_cam:
+                img_file = st.camera_input("📸 Tirar Foto da Folha")
+                if not img_file:
+                    img_file = st.file_uploader("Ou carregue da galeria", type=['jpg', 'png', 'jpeg'])
+
+            with col_res:
+                if img_file and gemini_key:
+                    st.success("Imagem capturada! Analisando...")
+                    image = Image.open(img_file)
+                    st.image(image, caption="Imagem Analisada", width=200)
+                    
+                    # Contexto para a IA ser precisa
+                    contexto = f"Umidade {hoje['Umid']}%, VPD {hoje['VPD']} kPa, Temperatura {hoje['Temp']}C. Fase {fase_sel}."
+                    
+                    with st.spinner("Consultando Banco de Dados Agronômico..."):
+                        resultado = analise_ia_gemini(gemini_key, image, cultura_sel, contexto)
+                        st.markdown(f"### 🩺 Laudo da IA:\n{resultado}")
+                elif img_file and not gemini_key:
+                    st.warning("⚠️ Insira a chave do Google Gemini no menu lateral para ativar a IA.")
+                else:
+                    st.info("Aguardando imagem...")
+
+        # --- ABA 3: FINANCEIRO ---
         with tab3:
-            col_gps = st.columns(len(VIZINHOS))
+            st.markdown("### 💰 Controle de Custos (Safra Atual)")
+            
+            # Inicializa Sessão Financeira
+            if 'custos' not in st.session_state: st.session_state['custos'] = []
+            
+            c_input1, c_input2, c_input3 = st.columns(3)
+            with c_input1: item = st.text_input("Item (Ex: Ureia, Fungicida)")
+            with c_input2: valor = st.number_input("Valor Total (R$)", min_value=0.0)
+            with c_input3: 
+                st.write("") # Espaço
+                st.write("") 
+                if st.button("➕ Adicionar Custo"):
+                    if item and valor > 0:
+                        st.session_state['custos'].append({"Item": item, "Valor": valor, "Data": date.today()})
+                        st.success("Lançado!")
+
+            # Tabela e Totais
+            if st.session_state['custos']:
+                df_fin = pd.DataFrame(st.session_state['custos'])
+                st.dataframe(df_fin, use_container_width=True)
+                
+                total = df_fin['Valor'].sum()
+                estimativa_saca = st.number_input("Produtividade Esperada (Sacas/cx):", value=1000)
+                custo_un = total / estimativa_saca if estimativa_saca > 0 else 0
+                
+                st.markdown(f"""
+                <div class="financeiro-box">
+                    <h3>💵 Custo Total: R$ {total:,.2f}</h3>
+                    <p>Custo por Saca/Cx Estimado: <b>R$ {custo_un:,.2f}</b></p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.info("Nenhum custo lançado hoje.")
+
+        # --- ABA 4: RADAR ---
+        with tab4:
+            VIZINHOS = [{"nome": "Mucugê", "lat": -13.005, "lon": -41.371}, {"nome": "Barra da Estiva", "lat": -13.623, "lon": -41.326}, {"nome": "Cascavel", "lat": -13.196, "lon": -41.445}]
+            map_data = pd.DataFrame([{"nome": "Sede", "lat": float(lat), "lon": float(lon)}] + VIZINHOS)
+            st.map(map_data.rename(columns={"lat":"latitude", "lon":"longitude"}), zoom=9)
+            
+            row = st.columns(3)
             for i, v in enumerate(VIZINHOS):
                 try:
-                    r = requests.get(f"https://api.openweathermap.org/data/2.5/weather?lat={v['lat']}&lon={v['lon']}&appid={api_key}&units=metric").json()
-                    cor = "#ffcdd2" if "rain" in str(r) else "#c8e6c9"
-                    col_gps[i].markdown(f"<div style='background:{cor};padding:10px;border-radius:5px;text-align:center'><b>{v['nome'].split()[0]}</b><br>{r['main']['temp']:.0f}°C</div>", unsafe_allow_html=True)
+                    r = requests.get(f"https://api.openweathermap.org/data/2.5/weather?lat={v['lat']}&lon={v['lon']}&appid={weather_key}&units=metric").json()
+                    row[i].metric(v['nome'], f"{r['main']['temp']:.0f}°C", r['weather'][0]['description'])
                 except: pass
-            
-            # Mapa (conversão segura)
-            map_data = pd.DataFrame([FAZENDA] + VIZINHOS).rename(columns={"lat": "latitude", "lon": "longitude"})
-            map_data['latitude'] = map_data['latitude'].astype(float)
-            map_data['longitude'] = map_data['longitude'].astype(float)
-            st.map(map_data, zoom=9)
 
 else:
-    st.info("👈 Insira sua chave API para iniciar.")
+    st.warning("👈 Insira a Chave OpenWeather no menu lateral para iniciar o sistema.")
