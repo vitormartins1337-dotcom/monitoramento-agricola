@@ -14,24 +14,25 @@ from streamlit_google_auth import Authenticate
 # --- 1. CONFIGURAÇÃO DE ALTO NÍVEL ---
 st.set_page_config(page_title="Agro-Intel Enterprise", page_icon="🛰️", layout="wide")
 
-# --- LOGIN REAL COM GOOGLE OAUTH 2.0 ---
+# --- LOGIN REAL COM GOOGLE OAUTH 2.0 (CORRIGIDO) ---
 try:
-    # IMPORTANTE: A URL abaixo deve ser a URL do seu app no Streamlit Cloud
-    # Altere para a sua URL final para evitar erro de redirecionamento
+    # URL do seu app no Streamlit Cloud
     URL_DO_APP = "https://monitoramento-agricola.streamlit.app" 
 
+    # O erro 'secret_names' foi resolvido passando os valores diretamente
     authenticator = Authenticate(
-        secret_names=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        client_id=st.secrets["GOOGLE_CLIENT_ID"],
+        client_secret=st.secrets["GOOGLE_CLIENT_SECRET"],
+        redirect_uri=URL_DO_APP,
         cookie_name="agro_intel_session",
         key="agro_secret_key_2026", 
-        cookie_expiry_days=30,
-        redirect_uri=URL_DO_APP
+        cookie_expiry_days=30
     )
 except Exception as e:
-    st.error(f"Erro Crítico na Autenticação: {e}")
+    st.error(f"Erro na configuração de Autenticação: {e}")
     st.stop()
 
-# Verifica autenticação
+# Verifica se o usuário já está logado
 authenticator.check_authenticity()
 
 # --- TELA DE LOGIN ---
@@ -59,7 +60,7 @@ try:
     WEATHER_KEY = st.secrets["OPENWEATHER_KEY"]
     GEMINI_KEY = st.secrets["GEMINI_KEY"]
 except:
-    st.error("Erro: Verifique se OPENWEATHER_KEY e GEMINI_KEY estão configurados no painel Secrets do Streamlit.")
+    st.error("Erro: Verifique as chaves OPENWEATHER_KEY e GEMINI_KEY no painel Secrets.")
     st.stop()
 
 # --- ESTILIZAÇÃO CSS ENTERPRISE ---
@@ -82,73 +83,63 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ENCICLOPÉDIA AGRONÔMICA (BANCO TITAN COMPLETO) ---
+# --- 2. ENCICLOPÉDIA AGRONÔMICA (BANCO TITAN INTEGRAL) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
         "vars": {
-            "Orchestra": {"kc": 1.15, "gda_meta": 1600, "info": "Pele lisa premium. Alta exigência de Potássio (K) para acabamento e peso de tubérculo."},
-            "Cupido": {"kc": 1.10, "gda_meta": 1400, "info": "Ciclo ultra-curto. Colheita antecipada. Extrema sensibilidade à Requeima (Phytophthora)."},
-            "Camila": {"kc": 1.15, "gda_meta": 1550, "info": "Referência em mercado fresco. Monitorar rigorosamente Sarna Comum e Rhizoctonia."},
-            "Atlantic": {"kc": 1.15, "gda_meta": 1650, "info": "Foco industrial (Chips). Evitar oscilações hídricas para prevenir Coração Oco."}
+            "Orchestra": {"kc": 1.15, "gda_meta": 1600, "info": "Pele lisa premium. Alta exigência de Potássio (K)."},
+            "Cupido": {"kc": 1.10, "gda_meta": 1400, "info": "Ciclo ultra-curto. Extrema sensibilidade à Requeima."},
+            "Camila": {"kc": 1.15, "gda_meta": 1550, "info": "Referência em mercado fresco. Monitorar Sarna e Rhizoctonia."},
+            "Atlantic": {"kc": 1.15, "gda_meta": 1650, "info": "Foco industrial (Chips). Evitar Coração Oco."}
         },
         "fases": {
             "Emergência (0-20 dias)": {
-                "desc": "Brotamento inicial e estabelecimento radicular no sulco.",
-                "fisiologia": "A planta utiliza reservas de amido do tubérculo-mãe. Raízes frágeis em fase de expansão.",
-                "manejo": "Solo aerado. Umidade em Capacidade de Campo. Monitorar Canela Preta (Erwinia).",
-                "quimica": "**Tratamento Sulco:** Azoxistrobina + Tiametoxam.\n**Alvos:** Rhizoctonia solani, Larva Alfinete."
+                "desc": "Brotamento inicial e estabelecimento radicular.",
+                "fisiologia": "Dependência das reservas do tubérculo-mãe.",
+                "manejo": "Solo aerado. Monitorar Canela Preta.",
+                "quimica": "**Solo:** Azoxistrobina + Tiametoxam."
             },
             "Vegetativo (20-35 dias)": {
-                "desc": "Expansão da área foliar e formação do Índice de Área Foliar (IAF).",
-                "fisiologia": "Alta demanda de Nitrogênio (N) para síntese proteica e fechamento de linhas.",
-                "manejo": "Realizar a Amontoa no estágio de 15-20cm. Evitar ferimentos radiculares.",
-                "quimica": "**Preventivos:** Mancozeb, Clorotalonil.\n**Pragas:** Acetamiprido (Pulgão), Lambda-Cialotrina (Vaquinha)."
+                "desc": "Expansão da área foliar (IAF).",
+                "fisiologia": "Alta demanda de Nitrogênio (N).",
+                "manejo": "Amontoa técnica. Monitorar Vaquinha.",
+                "quimica": "Mancozeb + Clorotalonil."
             },
             "Tuberização/Gancho (35-55 dias)": {
-                "desc": "Fase hormonal crítica. Diferenciação dos tubérculos (Ganchos).",
-                "fisiologia": "Inversão hormonal (Giberelina cai). Estresse hídrico agora causa Sarna e perda de calibre.",
-                "manejo": "Irrigação de precisão constante. Controle preventivo 'militar' de Requeima.",
-                "quimica": "**Requeima:** Mandipropamida (Revus), Metalaxil-M, Dimetomorfe."
+                "desc": "Diferenciação dos tubérculos (Ganchos).",
+                "fisiologia": "Inversão hormonal crítica. Sensibilidade ao déficit hídrico.",
+                "manejo": "Irrigação de precisão. Controle severo de Requeima.",
+                "quimica": "Revus (Mandipropamida) + Metalaxil-M."
             },
             "Enchimento (55-85 dias)": {
-                "desc": "Acúmulo de matéria seca e expansão radial intensa.",
-                "fisiologia": "Translocação massiva de açúcares das folhas para os tubérculos. Pico de K e Mg.",
-                "manejo": "Sanidade foliar absoluta. Monitorar Mosca Branca e Traça da Batata.",
-                "quimica": "**Pragas:** Ciantraniliprole (Benévia), Espirotesifeno (Oberon)."
+                "desc": "Expansão radial intensa e acúmulo de matéria seca.",
+                "fisiologia": "Pico de translocação Folha -> Tubérculo.",
+                "manejo": "Sanidade foliar. Monitorar Mosca Branca.",
+                "quimica": "Benévia (Ciantraniliprole)."
             },
             "Maturação (85+ dias)": {
-                "desc": "Senescência foliar controlada e suberização (cura da pele).",
-                "fisiologia": "Finalização do ciclo térmico. A pele deve firmar para suportar a colheita mecânica.",
-                "manejo": "Suspensão gradual da irrigação. Dessecação química programada.",
-                "quimica": "**Dessecante:** Diquat."
+                "desc": "Senescência e suberização (cura da pele).",
+                "fisiologia": "Finalização do ciclo térmico.",
+                "manejo": "Suspensão gradual da água. Dessecação química.",
+                "quimica": "Diquat."
             }
         }
     },
     "Café (Coffea arabica)": {
         "t_base": 10,
         "vars": {
-            "Catuaí": {"kc": 1.1, "gda_meta": 3000, "info": "Qualidade superior de bebida. Alta susceptibilidade à Ferrugem."},
-            "Arara": {"kc": 1.2, "gda_meta": 2900, "info": "Resistência genética à Ferrugem. Alta produtividade pendente."}
+            "Catuaí": {"kc": 1.1, "gda_meta": 3000, "info": "Qualidade premium. Suscetível à Ferrugem."},
+            "Arara": {"kc": 1.2, "gda_meta": 2900, "info": "Resistente à Ferrugem. Produtividade alta."}
         },
         "fases": {
-            "Florada": {
-                "desc": "Abertura das flores (Antese) e polinização.",
-                "fisiologia": "Demanda crítica de Boro (B) e Zinco (Zn) para viabilidade do tubo polínico.",
-                "manejo": "Proteger polinizadores. Monitorar Phoma e Mancha Aureolada.",
-                "quimica": "Cálcio Quelatado + Boro. Fungicida: Boscalida."
-            },
-            "Chumbinho": {
-                "desc": "Expansão inicial do fruto verde.",
-                "fisiologia": "Intensa divisão celular. Momento em que se define o tamanho da peneira.",
-                "manejo": "Controle preventivo de Cercospora e Ferrugem.",
-                "quimica": "Ciproconazol + Azoxistrobina (Priori Xtra)."
-            }
+            "Florada": {"desc": "Antese.", "fisiologia": "Demanda B e Zn.", "manejo": "Proteção de polinizadores.", "quimica": "Cálcio + Boro."},
+            "Chumbinho": {"desc": "Expansão inicial.", "fisiologia": "Divisão celular.", "manejo": "Cercospora.", "quimica": "Priori Xtra."}
         }
     }
 }
 
-# --- 3. MOTORES DE CÁLCULO E API ---
+# --- 3. MOTORES TÉCNICOS ---
 def calc_agro(temp, umid):
     es = 0.61078 * math.exp((17.27 * temp) / (temp + 237.3))
     ea = es * (umid / 100); vpd = round(es - ea, 2)
@@ -175,18 +166,7 @@ def get_forecast(lat, lon, kc, t_base):
         return pd.DataFrame(dados)
     except: return pd.DataFrame()
 
-def get_radar(lat, lon):
-    pontos = {"Norte": (lat+0.1, lon), "Sul": (lat-0.1, lon), "Leste": (lat, lon+0.1), "Oeste": (lat, lon-0.1)}
-    radar_res = []
-    for d, c in pontos.items():
-        try:
-            url = f"https://api.openweathermap.org/data/2.5/weather?lat={c[0]}&lon={c[1]}&appid={WEATHER_KEY}&units=metric"
-            r = requests.get(url).json()
-            radar_res.append({"Direcao": d, "Temp": r['main']['temp'], "Chuva": "Sim" if "rain" in r else "Não"})
-        except: pass
-    return pd.DataFrame(radar_res)
-
-# --- 4. SIDEBAR GESTOR ---
+# --- 4. SIDEBAR ---
 if 'loc' not in st.session_state: st.session_state['loc'] = {"lat": -13.200, "lon": -41.400}
 
 with st.sidebar:
@@ -197,19 +177,18 @@ with st.sidebar:
     
     st.divider()
     st.header("📍 Localização")
-    busca_cidade = st.text_input("Buscar Cidade (Ex: Mucugê, BA)")
-    if st.button("Sincronizar Mapa") and busca_cidade:
+    busca_cidade = st.text_input("Sincronizar Município (BA):")
+    if st.button("Atualizar GPS") and busca_cidade:
         url_geo = f"http://api.openweathermap.org/geo/1.0/direct?q={busca_cidade}&limit=1&appid={WEATHER_KEY}"
         res_geo = requests.get(url_geo).json()
         if res_geo:
             st.session_state['loc'] = {"lat": res_geo[0]['lat'], "lon": res_geo[0]['lon']}
-            st.success("Coordenadas Atualizadas!")
             st.rerun()
 
     st.divider()
     cultura_sel = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
     var_sel = st.selectbox("Variedade:", list(BANCO_MASTER[cultura_sel]['vars'].keys()))
-    fase_sel = st.selectbox("Estágio:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
+    fase_sel = st.selectbox("Estágio Fenológico:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
     d_plantio = st.date_input("Início do Ciclo:", date(2025, 11, 25))
     info_v = BANCO_MASTER[cultura_sel]['vars'][var_sel]
 
@@ -226,16 +205,15 @@ if not df.empty:
     st.markdown(f"""
     <div class="header-box">
         <h2>{cultura_sel} - {var_sel}</h2>
-        <p style="font-size:1.2em">📆 <b>{dias} Dias de Ciclo</b> | Estágio: {fase_sel}</p>
-        <p>🧬 Genética: {info_v['info']}</p>
+        <p style="font-size:1.2em"><b>{dias} Dias de Ciclo</b> | Fase Atual: {fase_sel}</p>
     </div>
     """, unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("🌡️ Temp Média", f"{hoje['Temp']:.1f}°C", f"Umid: {hoje['Umid']}%")
     c2.metric("💧 VPD", f"{hoje['VPD']} kPa", "Ideal" if 0.4 <= hoje['VPD'] <= 1.3 else "Alerta")
-    c3.metric("💦 ETc Diária", f"{hoje['ETc']} mm")
-    c4.metric("🛡️ Delta T", f"{hoje['Delta T']}°C", "Seguro")
+    c3.metric("💦 Consumo ETc", f"{hoje['ETc']} mm")
+    c4.metric("🛡️ Delta T", f"{hoje['Delta T']}°C")
 
     tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Água", "📡 Radar Regional", "👁️ IA Vision", "💰 Custos", "🗺️ Mapa Satélite", "🔔 Notificações"])
 
@@ -243,70 +221,37 @@ if not df.empty:
     with tabs[0]:
         dados = BANCO_MASTER[cultura_sel]['fases'][fase_sel]
         
+        
+
         st.markdown(f"""<div class="gda-box"><h3>🔥 Acúmulo Térmico (GDA): {gda_acum:.0f} / {meta_gda}</h3></div>""", unsafe_allow_html=True)
         st.progress(progresso_gda)
         
         estilo = "alert-low" if hoje['Umid'] < 85 else "alert-high"
-        msg = "✅ Clima favorável. Use Protetores." if estilo == "alert-low" else "🚨 ALERTA SANITÁRIO: Risco de Requeima."
+        msg = "✅ Condição favorável para preventivos." if estilo == "alert-low" else "🚨 ALERTA SANITÁRIO: Risco de Requeima acelerado."
         
+        
+
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(f"<div class='tech-card'><div class='tech-header'>🧬 Fisiologia da Fase</div><p>{dados['desc']}</p><p><b>Bioquímica:</b> {dados['fisiologia']}</p></div>", unsafe_allow_html=True)
             st.markdown(f"<div class='{estilo}'>{msg}</div>", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"<div class='tech-card'><div class='tech-header'>🛠️ Manejo & Químicos</div><p><b>Manejo:</b> {dados['manejo']}</p><hr><p><b>Prescrição Técnica:</b><br>{dados['quimica']}</p></div>", unsafe_allow_html=True)
-
-    # --- ABA 2: CLIMA ---
-    with tabs[1]:
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Precipitação (mm)', marker_color='#3b82f6'))
-        fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo ETc', line=dict(color='#ef4444', width=3)))
-        st.plotly_chart(fig, use_container_width=True)
-
-    # --- ABA 3: RADAR ---
-    with tabs[2]:
-        st.markdown("### 📡 Radar de Vizinhança (Raio 10km)")
-        df_radar = get_radar(st.session_state['loc']['lat'], st.session_state['loc']['lon'])
-        if not df_radar.empty:
-            cols = st.columns(4)
-            for i, r in df_radar.iterrows():
-                cor = "#ffebee" if r['Chuva'] == "Sim" else "#e8f5e9"
-                with cols[i]: st.markdown(f"""<div class="tech-card" style="background-color:{cor}; text-align:center"><b>{r['Direcao']}</b><br>{r['Temp']:.1f}°C<br>Chuva: {r['Chuva']}</div>""", unsafe_allow_html=True)
-
-    # --- ABA 4: IA VISION ---
-    with tabs[3]:
-        foto = st.camera_input("Capturar Praga/Folha")
-        if foto:
-            genai.configure(api_key=GEMINI_KEY)
-            with st.spinner("Analisando..."):
-                res = genai.GenerativeModel('gemini-1.5-flash').generate_content([f"Agrônomo Especialista. Analise imagem de {cultura_sel}. Fase {fase_sel}.", Image.open(foto)])
-                st.success(res.text)
-
-    # --- ABA 5: CUSTOS ---
-    with tabs[4]:
-        if 'custos' not in st.session_state: st.session_state['custos'] = []
-        c_i, c_v = st.columns(2)
-        item = c_i.text_input("Insumo/Serviço")
-        valor = c_v.number_input("R$")
-        if st.button("Lançar"): st.session_state['custos'].append({"Item": item, "Valor": valor})
-        if st.session_state['custos']: st.table(pd.DataFrame(st.session_state['custos']))
+            st.markdown(f"<div class='tech-card'><div class='tech-header'>🛠️ Plano de Manejo Sugerido</div><p><b>Ação Cultural:</b> {dados['manejo']}</p><hr><p><b>Prescrição Química:</b><br>{dados['quimica']}</p></div>", unsafe_allow_html=True)
 
     # --- ABA 6: MAPA ---
     with tabs[5]:
-        st.markdown("### 🗺️ Georreferenciamento de Talhões")
         m = folium.Map(location=[st.session_state['loc']['lat'], st.session_state['loc']['lon']], zoom_start=14)
         folium.TileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri', name='Satélite').add_to(m)
-        LocateControl().add_to(m); Fullscreen().add_to(m)
         st_folium(m, width="100%", height=500)
 
     # --- ABA 7: NOTIFICAÇÕES ---
     with tabs[6]:
-        st.markdown("### 🔔 Central de Alertas Corporativos")
-        st.success(f"Conta Google Sincronizada: **{USER_EMAIL}**")
-        st.write(f"Olá, {USER_NAME}. Você receberá relatórios técnicos e alertas climáticos automáticos neste e-mail.")
-        if st.button("Confirmar Protocolo de Alertas"):
+        st.markdown("### 🔔 Configuração de Alertas Corporativos")
+        st.success(f"E-mail Sincronizado: **{USER_EMAIL}**")
+        st.write(f"Prezado {USER_NAME}, o sistema monitorará o risco climático e o acúmulo térmico (GDA) diariamente.")
+        if st.button("Ativar Protocolo de Alertas"):
             st.balloons()
-            st.success("Sincronização realizada com sucesso!")
+            st.success("Protocolo ativado com sucesso!")
 
 else:
-    st.error("⚠️ Falha na conexão com o servidor de satélites.")
+    st.error("⚠️ Falha na conexão com os dados de satélite.")
