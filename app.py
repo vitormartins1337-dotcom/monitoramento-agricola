@@ -1,4 +1,4 @@
-         import streamlit as st
+import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import requests
@@ -13,7 +13,7 @@ from streamlit_folium import st_folium
 # --- 1. CONFIGURAÇÃO DE ALTO NÍVEL ---
 st.set_page_config(page_title="Agro-Intel Titan Pro", page_icon="🛰️", layout="wide")
 
-# --- ESTILIZAÇÃO CSS (PADRÃO ENTERPRISE) ---
+# --- ESTILIZAÇÃO CSS CORPORATIVA ---
 st.markdown("""
 <style>
     .main { background-color: #f8fafc; }
@@ -26,7 +26,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS AGRONÔMICO (ESTRUTURA INTEGRAL) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO INTEGRAL ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
@@ -99,11 +99,9 @@ with st.sidebar:
     st.header("⚙️ Configuração")
     api_w = st.secrets.get("OPENWEATHER_KEY", "")
     api_g = st.secrets.get("GEMINI_KEY", "")
-    
     st.divider()
     lat_f = st.number_input("Latitude:", value=-13.2000, format="%.4f")
     lon_f = st.number_input("Longitude:", value=-41.4000, format="%.4f")
-    
     st.divider()
     cultura_sel = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
     var_sel = st.selectbox("Variedade:", list(BANCO_MASTER[cultura_sel]['vars'].keys()))
@@ -117,13 +115,11 @@ if api_w:
     crop_info = BANCO_MASTER[cultura_sel]
     v_info = crop_info['vars'][var_sel]
     f_info = crop_info['fases'][fase_sel]
-    
     df = get_forecast(lat_f, lon_f, api_w, v_info['kc'], crop_info['t_base'])
     
     if not df.empty:
         hoje = df.iloc[0]; dias = (date.today() - d_plantio).days
         gda_atual = dias * df['GDA'].mean(); meta = v_info['gda_meta']
-
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("🌡️ Temp.", f"{hoje['Temp']:.1f}°C")
         c2.metric("💧 Umidade", f"{hoje['Umid']}%")
@@ -132,30 +128,27 @@ if api_w:
 
         tabs = st.tabs(["🎓 Consultoria", "📊 Clima & Água", "📡 Radar", "👁️ IA Vision", "💰 Custos", "🚚 Logística"])
 
-        with tabs[0]: # CONSULTORIA
+        with tabs[0]:
             
             st.markdown(f"### 🔥 Acúmulo Térmico: {gda_atual:.0f} / {meta} GDA")
             st.progress(min(1.0, gda_atual/meta))
-            
             estilo = "alert-high" if hoje['Umid'] > 85 else "alert-low"
             msg = "🚨 RISCO FÚNGICO ALTO" if hoje['Umid'] > 85 else "✅ CONDIÇÃO SEGURA"
             st.markdown(f"<div class='{estilo}'>{msg}</div>", unsafe_allow_html=True)
             
-            
-
             col_a, col_b = st.columns(2)
             with col_a:
                 st.markdown(f"<div class='tech-card'><b>🧬 Fisiologia:</b><br>{f_info['fisio']}<br><br><b>Biológico:</b><br>{f_info['bio']}</div>", unsafe_allow_html=True)
             with col_b:
                 st.markdown(f"<div class='tech-card'><b>🧪 Prescrição:</b><br>Manejo: {f_info['manejo']}<hr>Química:<br>{f_info['quim']}</div>", unsafe_allow_html=True)
 
-        with tabs[1]: # CLIMA
+        with tabs[1]:
             fig = go.Figure()
             fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva', marker_color='#3b82f6'))
             fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo ETc', line=dict(color='#ef4444', width=3)))
             st.plotly_chart(fig, use_container_width=True)
 
-        with tabs[2]: # RADAR
+        with tabs[2]:
             st.markdown("### 📡 Radar Regional (15km)")
             df_radar = get_radar(lat_f, lon_f, api_w)
             if not df_radar.empty:
@@ -163,7 +156,7 @@ if api_w:
                 for idx, row in df_radar.iterrows():
                     with cols[idx]: st.info(f"**{row['Direção']}**\n\n{row['Temp']}°C\n\nChuva: {row['Chuva']}")
 
-        with tabs[3]: # IA
+        with tabs[3]:
             if api_g:
                 foto = st.camera_input("Escanear Sintoma")
                 if foto:
@@ -171,17 +164,11 @@ if api_w:
                     res = genai.GenerativeModel('gemini-1.5-flash').generate_content([f"Agrônomo Expert. Analise imagem de {cultura_sel}.", Image.open(foto)])
                     st.success(res.text)
 
-        with tabs[4]: # CUSTOS
-            if 'c' not in st.session_state: st.session_state['c'] = []
-            it = st.text_input("Insumo"); vl = st.number_input("R$")
-            if st.button("Lançar"): st.session_state['c'].append({"Item": it, "Valor": vl})
-            if st.session_state['c']: st.table(pd.DataFrame(st.session_state['c']))
-
-        with tabs[5]: # LOGÍSTICA
+        with tabs[5]:
             dist = 450; peso = st.slider("Carga (kg)", 100, 800, 400)
             custo = (dist/10)*6.20
             l1, l2 = st.columns(2)
             l1.metric("Custo Viagem", f"R$ {custo:.2f}")
             l2.metric("R$/kg", f"R$ {custo/peso:.2f}")
 else:
-    st.error("⚠️ Configure as chaves de API nos Secrets.")      
+    st.error("⚠️ Configure as chaves de API nos Secrets.")
