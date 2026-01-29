@@ -14,8 +14,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # --- 1. CONFIGURAÇÃO VISUAL ---
-st.set_page_config(page_title="Agro-Intel Notificações", page_icon="🔔", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Agro-Intel Pro", page_icon="🔐", layout="wide", initial_sidebar_state="expanded")
 
+# --- CSS PROFISSIONAL ---
 st.markdown("""
 <style>
     .main { background-color: #f4f6f9; }
@@ -25,13 +26,48 @@ st.markdown("""
     .gda-box { background-color: #fff3e0; border: 1px solid #ffe0b2; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
     .radar-card { background-color: #e1f5fe; padding: 10px; border-radius: 5px; text-align: center; border: 1px solid #b3e5fc; }
     .email-card { background-color: #f3e5f5; border: 1px solid #e1bee7; padding: 20px; border-radius: 8px; }
+    .login-box { max-width: 400px; margin: 100px auto; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; }
     .alert-high { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 5px; color: #b71c1c; }
     .alert-low { background-color: #e8f5e9; border-left: 5px solid #2e7d32; padding: 15px; border-radius: 5px; color: #1b5e20; }
     h3 { margin-top: 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ENCICLOPÉDIA AGRONÔMICA (INTACTA) ---
+# --- 2. GESTÃO DE LOGIN (SESSÃO) ---
+if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
+if 'user_email' not in st.session_state: st.session_state['user_email'] = ""
+if 'user_name' not in st.session_state: st.session_state['user_name'] = ""
+
+# --- TELA DE LOGIN (Se não estiver logado) ---
+if not st.session_state['logged_in']:
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.markdown("""
+        <div class="login-box">
+            <h2>🔐 Agro-Intel Login</h2>
+            <p>Acesse sua fazenda digital</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Simulação de Login Google (Para OAuth real precisaria de credenciais .json)
+        with st.form("login_form"):
+            email_input = st.text_input("E-mail Google:", placeholder="seu.email@gmail.com")
+            nome_input = st.text_input("Nome:", placeholder="Seu Nome")
+            submit = st.form_submit_button("🚀 Entrar com Google")
+            
+            if submit and email_input:
+                st.session_state['logged_in'] = True
+                st.session_state['user_email'] = email_input
+                st.session_state['user_name'] = nome_input
+                st.rerun()
+    
+    st.stop() # Para a execução aqui se não estiver logado
+
+# ==============================================================================
+# DAQUI PARA BAIXO: O APLICATIVO COMPLETO (SÓ CARREGA SE LOGADO)
+# ==============================================================================
+
+# --- ENCICLOPÉDIA AGRONÔMICA ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
@@ -95,7 +131,7 @@ BANCO_MASTER = {
     }
 }
 
-# --- 3. FUNÇÕES (GEO, CÁLCULO, IA, EMAIL) ---
+# --- 3. FUNÇÕES ---
 def get_credentials():
     return st.query_params.get("w_key", None), st.query_params.get("g_key", None)
 
@@ -140,24 +176,14 @@ def get_radar_data(api_key, lat, lon):
     return pd.DataFrame(resultados)
 
 def enviar_notificacao(destinatario, assunto, corpo, smtp_email, smtp_senha):
-    if not smtp_email or not smtp_senha:
-        return False, "Configure o SMTP no menu lateral para enviar e-mails reais."
+    if not smtp_email or not smtp_senha: return False, "Configure o SMTP no menu lateral para enviar e-mails reais."
     try:
-        msg = MIMEMultipart()
-        msg['From'] = smtp_email
-        msg['To'] = destinatario
-        msg['Subject'] = assunto
+        msg = MIMEMultipart(); msg['From'] = smtp_email; msg['To'] = destinatario; msg['Subject'] = assunto
         msg.attach(MIMEText(corpo, 'plain'))
-        
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(smtp_email, smtp_senha)
-        text = msg.as_string()
-        server.sendmail(smtp_email, destinatario, text)
-        server.quit()
+        server = smtplib.SMTP('smtp.gmail.com', 587); server.starttls(); server.login(smtp_email, smtp_senha)
+        server.sendmail(smtp_email, destinatario, msg.as_string()); server.quit()
         return True, "E-mail enviado com sucesso!"
-    except Exception as e:
-        return False, f"Erro no envio: {str(e)}"
+    except Exception as e: return False, f"Erro no envio: {str(e)}"
 
 # --- 4. CONFIGURAÇÃO (SIDEBAR) ---
 url_w, url_g = get_credentials()
@@ -167,48 +193,46 @@ if 'loc_lon' not in st.session_state: st.session_state['loc_lon'] = -41.285
 if 'pontos_mapa' not in st.session_state: st.session_state['pontos_mapa'] = []
 
 with st.sidebar:
-    st.header("⚙️ Configurações")
-    with st.expander("🔑 Login / APIs", expanded=not url_w):
+    st.image("https://cdn-icons-png.flaticon.com/512/3058/3058995.png", width=70)
+    st.write(f"👤 **{st.session_state.get('user_name', 'Produtor')}**")
+    if st.button("🚪 Sair / Logout"):
+        st.session_state['logged_in'] = False
+        st.rerun()
+        
+    st.divider()
+    st.header("⚙️ Sistema")
+    with st.expander("🔑 APIs (Clima/IA)", expanded=not url_w):
         val_w = st.text_input("OpenWeather Key", value=url_w if url_w else "", type="password")
         val_g = st.text_input("Gemini AI Key", value=url_g if url_g else "", type="password")
         if st.button("🔗 Salvar"): st.query_params["w_key"] = val_w; st.query_params["g_key"] = val_g; st.rerun()
     
-    # NOVA CONFIGURAÇÃO DE E-MAIL
-    with st.expander("📧 Configuração SMTP (Opcional)"):
-        st.caption("Para envio real de e-mails (Gmail)")
+    with st.expander("📧 SMTP (Opcional)"):
         smtp_user = st.text_input("Seu Gmail:", placeholder="exemplo@gmail.com")
-        smtp_pass = st.text_input("Senha de App:", type="password", help="Use a 'Senha de App' do Google, não a sua senha normal.")
+        smtp_pass = st.text_input("Senha de App:", type="password")
 
     st.divider()
-    
-    st.markdown("### 📍 Localização da Propriedade")
-    tab_busca, tab_coord = st.tabs(["🔍 Cidade", "🌐 Coordenadas"])
+    st.markdown("### 📍 Localização")
+    tab_busca, tab_coord = st.tabs(["🔍 Cidade", "🌐 GPS"])
     with tab_busca:
-        cidade = st.text_input("Buscar Cidade:", placeholder="Ex: Mucugê, BA")
-        if st.button("Buscar") and cidade and val_w:
+        cidade = st.text_input("Buscar:", placeholder="Ex: Mucugê, BA")
+        if st.button("Localizar") and cidade and val_w:
             nlat, nlon = get_coords_from_city(cidade, val_w)
-            if nlat: 
-                st.session_state['loc_lat'], st.session_state['loc_lon'] = nlat, nlon
-                st.success("Localizado!")
-                st.rerun()
+            if nlat: st.session_state['loc_lat'], st.session_state['loc_lon'] = nlat, nlon; st.rerun()
     with tab_coord:
-        nlat = st.number_input("Latitude:", value=st.session_state['loc_lat'], format="%.5f")
-        nlon = st.number_input("Longitude:", value=st.session_state['loc_lon'], format="%.5f")
-        if st.button("Atualizar GPS"):
-            st.session_state['loc_lat'], st.session_state['loc_lon'] = nlat, nlon
-            st.rerun()
+        nlat = st.number_input("Lat:", value=st.session_state['loc_lat'], format="%.5f")
+        nlon = st.number_input("Lon:", value=st.session_state['loc_lon'], format="%.5f")
+        if st.button("Atualizar"): st.session_state['loc_lat'], st.session_state['loc_lon'] = nlat, nlon; st.rerun()
 
     st.divider()
     cultura_sel = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
     var_sel = st.selectbox("Cultivar:", list(BANCO_MASTER[cultura_sel]['vars'].keys()))
-    fase_sel = st.selectbox("Fase Atual:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
-    
+    fase_sel = st.selectbox("Fase:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
     if 'd_plantio' not in st.session_state: st.session_state['d_plantio'] = date(2025, 11, 25)
-    d_plantio = st.date_input("Início do Ciclo:", st.session_state['d_plantio'])
+    d_plantio = st.date_input("Início:", st.session_state['d_plantio'])
     info_v = BANCO_MASTER[cultura_sel]['vars'][var_sel]
 
 # --- 5. DASHBOARD ---
-st.title("🛰️ Agro-Intel Notificações v19.0")
+st.title("🛰️ Agro-Intel Pro v20.0")
 
 if val_w:
     df = get_forecast(val_w, st.session_state['loc_lat'], st.session_state['loc_lon'], info_v['kc'], BANCO_MASTER[cultura_sel]['t_base'])
@@ -237,125 +261,78 @@ if val_w:
         c3.metric("💦 ETc", f"{hoje['ETc']} mm", f"Kc: {info_v['kc']}")
         c4.metric("🛡️ Delta T", f"{hoje['Delta T']}°C", "Ok" if 2 <= hoje['Delta T'] <= 8 else "Ruim")
 
-        # ADICIONADA A NOVA ABA DE NOTIFICAÇÕES (Sétima Aba)
-        tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Água", "📡 Radar Regional", "👁️ IA Vision", "💰 Custos", "🗺️ Mapa da Fazenda", "🔔 Notificações"])
+        tabs = st.tabs(["🎓 Consultoria", "📊 Clima", "📡 Radar", "👁️ IA Vision", "💰 Custos", "🗺️ Mapa", "🔔 Notificações"])
 
-        # ABA 1: CONSULTORIA
         with tabs[0]:
             dados = BANCO_MASTER[cultura_sel]['fases'][fase_sel]
-            st.markdown(f"""<div class="gda-box"><h4>🔥 Maturação Térmica (GDA)</h4><p>Acumulado Estimado: <b>{gda_acumulado_estimado:.0f}</b> / Meta: <b>{gda_meta}</b> GDA</p></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="gda-box"><h4>🔥 Maturação Térmica (GDA)</h4><p>Estimado: <b>{gda_acumulado_estimado:.0f}</b> / Meta: <b>{gda_meta}</b></p></div>""", unsafe_allow_html=True)
             st.progress(progresso_maturacao)
-            
-            risco = "Baixo"; msg = "✅ <b>Clima Seco:</b> Use Protetores (Mancozeb/Cobre)."; estilo = "alert-low"
-            if hoje['Umid'] > 85 or hoje['Chuva'] > 2: risco="ALTO"; msg="🚨 <b>ALERTA UMIDADE:</b> Risco severo. Use <b>SISTÊMICOS</b>."; estilo="alert-high"
-            
+            risco = "Baixo"; msg = "✅ <b>Clima Seco:</b> Use Protetores."; estilo = "alert-low"
+            if hoje['Umid'] > 85 or hoje['Chuva'] > 2: risco="ALTO"; msg="🚨 <b>ALERTA UMIDADE:</b> Use <b>SISTÊMICOS</b>."; estilo="alert-high"
             c_esq, c_dir = st.columns(2)
             with c_esq:
-                st.markdown(f"""<div class="tech-card"><div class="tech-header">🧬 Fisiologia da Fase</div><p><b>Resumo:</b> {dados['desc']}</p><p><b>Detalhe:</b> {dados['fisiologia']}</p></div>""", unsafe_allow_html=True)
-                st.markdown(f"""<div class="{estilo}"><strong>☁️ Matriz de Decisão (Hoje)</strong><br>{msg}</div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="tech-card"><div class="tech-header">🧬 Fisiologia</div><p><b>Resumo:</b> {dados['desc']}</p><p><b>Detalhe:</b> {dados['fisiologia']}</p></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="{estilo}"><strong>☁️ Decisão</strong><br>{msg}</div>""", unsafe_allow_html=True)
             with c_dir:
-                st.markdown(f"""<div class="tech-card"><div class="tech-header">🛠️ Plano de Manejo</div><p><b>Cultural:</b> {dados['manejo']}</p><hr><p><b>🧪 Químico:</b><br>{dados['quimica']}</p></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class="tech-card"><div class="tech-header">🛠️ Manejo</div><p><b>Cultural:</b> {dados['manejo']}</p><hr><p><b>🧪 Químico:</b><br>{dados['quimica']}</p></div>""", unsafe_allow_html=True)
 
-        # ABA 2: CLIMA
         with tabs[1]:
             fig = go.Figure()
             fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva', marker_color='#3b82f6'))
             fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='ETc', line=dict(color='#ef4444', width=2)))
             st.plotly_chart(fig, use_container_width=True)
 
-        # ABA 3: RADAR
         with tabs[2]:
-            st.markdown("### 📡 Monitoramento de Vizinhança (Raio 15km)")
+            st.markdown("### 📡 Radar (15km)")
             df_radar = get_radar_data(val_w, st.session_state['loc_lat'], st.session_state['loc_lon'])
             if not df_radar.empty:
                 cols = st.columns(4)
                 for idx, row in df_radar.iterrows():
                     cor = "#ffebee" if row['Chuva'] == "Sim" else "#e8f5e9"
-                    with cols[idx]:
-                        st.markdown(f"""<div class="radar-card" style="background-color: {cor}"><b>{row['Direcao']}</b><br><span style="font-size: 1.5em">{row['Temp']:.0f}°C</span><br>{row['Clima']}<br><small>Chuva: {row['Chuva']}</small></div>""", unsafe_allow_html=True)
+                    with cols[idx]: st.markdown(f"""<div class="radar-card" style="background-color: {cor}"><b>{row['Direcao']}</b><br>{row['Temp']:.0f}°C<br><small>{row['Chuva']}</small></div>""", unsafe_allow_html=True)
 
-        # ABA 4: IA
         with tabs[3]:
-            img = st.camera_input("Foto da Folha")
+            img = st.camera_input("Foto")
             if img and val_g:
                 genai.configure(api_key=val_g)
                 with st.spinner("Analisando..."):
                     st.success(genai.GenerativeModel('gemini-1.5-flash').generate_content([f"Agrônomo. Analise {cultura_sel}. Fase {fase_sel}. Umidade {hoje['Umid']}%. Diagnóstico e Solução.", Image.open(img)]).text)
 
-        # ABA 5: CUSTOS
         with tabs[4]:
             if 'custos' not in st.session_state: st.session_state['custos'] = []
-            c1, c2 = st.columns(2)
-            i = c1.text_input("Item"); v = c2.number_input("R$")
-            if c2.button("Lançar"): st.session_state['custos'].append({"Item": i, "Valor": v}); st.success("Salvo")
+            c1, c2 = st.columns(2); i = c1.text_input("Item"); v = c2.number_input("R$")
+            if c2.button("Lançar"): st.session_state['custos'].append({"Item": i, "Valor": v})
             if st.session_state['custos']: st.dataframe(pd.DataFrame(st.session_state['custos'])); st.metric("Total", f"R$ {pd.DataFrame(st.session_state['custos'])['Valor'].sum()}")
 
-        # ABA 6: MAPA
         with tabs[5]:
-            st.markdown("### 🗺️ Mapa da Propriedade")
-            c_add_pt, c_mapa = st.columns([1, 3])
-            with c_add_pt:
-                nome_pt = st.text_input("Nome do Talhão")
+            c_add, c_map = st.columns([1, 3])
+            with c_add:
+                nome_pt = st.text_input("Nome Local")
                 if st.session_state.get('last_click'):
-                    st.caption(f"Lat: {st.session_state['last_click'][0]:.4f}, Lon: {st.session_state['last_click'][1]:.4f}")
-                    if st.button("💾 Salvar Ponto") and nome_pt:
-                        st.session_state['pontos_mapa'].append({"nome": nome_pt, "lat": st.session_state['last_click'][0], "lon": st.session_state['last_click'][1]})
-                        st.success("Salvo!")
-                        st.rerun()
+                    if st.button("Salvar") and nome_pt: st.session_state['pontos_mapa'].append({"nome": nome_pt, "lat": st.session_state['last_click'][0], "lon": st.session_state['last_click'][1]}); st.rerun()
                 if st.session_state['pontos_mapa']:
-                    st.divider(); st.write("**Pontos Salvos:**")
+                    st.write("Pontos:"); 
                     for p in st.session_state['pontos_mapa']: st.write(f"📍 {p['nome']}")
-            with c_mapa:
+            with c_map:
                 m = folium.Map(location=[st.session_state['loc_lat'], st.session_state['loc_lon']], zoom_start=14)
                 folium.TileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri', name='Satélite').add_to(m)
                 LocateControl().add_to(m); Fullscreen().add_to(m)
-                folium.Marker([st.session_state['loc_lat'], st.session_state['loc_lon']], popup="Sede", icon=folium.Icon(color='red', icon='home')).add_to(m)
-                for p in st.session_state['pontos_mapa']: folium.Marker([p['lat'], p['lon']], popup=p['nome'], icon=folium.Icon(color='green', icon='leaf')).add_to(m)
+                for p in st.session_state['pontos_mapa']: folium.Marker([p['lat'], p['lon']], popup=p['nome']).add_to(m)
                 out = st_folium(m, width="100%", height=500, returned_objects=["last_clicked"])
                 if out["last_clicked"]: st.session_state['last_click'] = (out["last_clicked"]["lat"], out["last_clicked"]["lng"]); st.rerun()
 
-        # --- ABA 7: NOTIFICAÇÕES (NOVA!) ---
         with tabs[6]:
-            st.markdown("### 🔔 Configuração de Alertas Automáticos")
-            st.write("Receba os relatórios do Agro-Intel diretamente no seu e-mail todas as manhãs.")
-            
-            c_email, c_check = st.columns([2, 1])
-            
-            with c_email:
-                st.markdown("""
-                <div class="email-card">
-                    <h4>📧 Inscrição</h4>
-                    <p>O sistema enviará alertas de <b>Risco Climático (Requeima/Umidade)</b> e <b>Resumo Semanal</b>.</p>
-                </div>
-                """, unsafe_allow_html=True)
-                email_destinatario = st.text_input("Seu E-mail para receber alertas:", placeholder="produtor@fazenda.com")
-            
-            with c_check:
-                st.write("**Selecione os Tópicos:**")
-                check_clima = st.checkbox("⛈️ Alertas Climáticos (Diário)", value=True)
-                check_praga = st.checkbox("🐛 Alertas de Pragas (Semanal)", value=True)
-                check_fin = st.checkbox("💰 Fechamento Financeiro (Mensal)", value=False)
-            
-            st.divider()
-            
-            if st.button("💾 Salvar e Enviar Teste"):
-                if email_destinatario:
-                    # Tenta enviar e-mail real se tiver configurado
-                    sucesso, msg = enviar_notificacao(
-                        email_destinatario, 
-                        "Bem-vindo ao Agro-Intel Alertas", 
-                        f"Olá!\n\nSeu cadastro foi confirmado para a cultura de {cultura_sel}.\nVocê receberá alertas quando houver risco de Requeima ou alta umidade.\n\nAtenciosamente,\nEquipe Agro-Intel",
-                        smtp_user,
-                        smtp_pass
-                    )
-                    
-                    if sucesso:
-                        st.success(f"✅ {msg}")
-                    else:
-                        st.warning(f"⚠️ {msg}")
-                        st.info("💡 Dica: Configure o SMTP no menu lateral para o envio funcionar de verdade. Por enquanto, seu cadastro foi salvo localmente.")
-                else:
-                    st.error("Por favor, digite um e-mail válido.")
+            st.markdown("### 🔔 Central de Alertas")
+            c_mail, c_opt = st.columns([2, 1])
+            with c_mail:
+                st.markdown(f"""<div class="email-card"><h4>Olá, {st.session_state['user_name']}!</h4><p>Confirme seu e-mail para receber os relatórios.</p></div>""", unsafe_allow_html=True)
+                email_dest = st.text_input("E-mail de Destino:", value=st.session_state['user_email'])
+            with c_opt:
+                st.checkbox("⛈️ Clima (Diário)", True); st.checkbox("🐛 Pragas (Semanal)", True)
+            if st.button("💾 Testar Envio"):
+                ok, msg = enviar_notificacao(email_dest, "Teste Agro-Intel", "Sistema Ativo!", smtp_user, smtp_pass)
+                if ok: st.success(msg)
+                else: st.error(msg)
 
 else:
-    st.warning("⚠️ Configure suas chaves no menu lateral para iniciar.")
+    st.warning("⚠️ Insira suas chaves no Menu Lateral.")
