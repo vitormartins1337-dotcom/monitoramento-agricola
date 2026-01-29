@@ -7,95 +7,182 @@ import google.generativeai as genai
 from PIL import Image
 from datetime import datetime, date
 
-# --- 1. CONFIGURAÇÃO VISUAL PROFISSIONAL ---
+# --- 1. CONFIGURAÇÃO VISUAL ---
 st.set_page_config(
-    page_title="Agro-Intel Master",
-    page_icon="🧬",
+    page_title="Agro-Intel Omni",
+    page_icon="🌍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
-    .main { background-color: #f4f6f9; }
-    div[data-testid="metric-container"] { background-color: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .header-box { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-    .protocolo-box { background-color: #e8f5e9; border-left: 5px solid #2e7d32; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
-    .quimica-box { background-color: #ffebee; border-left: 5px solid #c62828; padding: 15px; border-radius: 5px; margin-bottom: 10px; }
-    h3 { margin-top: 0; color: #1565c0; }
+    .main { background-color: #f0f2f6; }
+    div[data-testid="metric-container"] { background-color: #fff; border: 1px solid #d1d5db; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .header-box { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; }
+    .protocolo-box { background-color: #ecfdf5; border-left: 5px solid #059669; padding: 15px; border-radius: 6px; margin-bottom: 10px; }
+    .quimica-box { background-color: #fef2f2; border-left: 5px solid #dc2626; padding: 15px; border-radius: 6px; margin-bottom: 10px; }
+    h3 { color: #1e3a8a; margin-top: 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS AGRONÔMICO DETALHADO (CÉREBRO) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO TOTAL (CHAPADA DIAMANTINA) ---
 BANCO_MASTER = {
     "Batata": {
         "vars": {
-            "Orchestra": {"kc": 1.15, "alerta": "Alta exigência de K. Sensível a Alternaria (Pinta Preta)."},
-            "Cupido": {"kc": 1.10, "alerta": "Ciclo Curto. Altíssima sensibilidade a Requeima (Phytophthora)."},
-            "Camila": {"kc": 1.15, "alerta": "Pele sensível. Cuidado com Sarna e Dano Mecânico."},
-            "Atlantic": {"kc": 1.15, "alerta": "Chips. Evitar estresse hídrico para não dar Coração Oco."}
+            "Orchestra": {"kc": 1.15, "alerta": "Alta exigência de K. Sensível a Pinta Preta."},
+            "Cupido": {"kc": 1.10, "alerta": "Ciclo Curto. Altíssima sensibilidade a Requeima."},
+            "Camila": {"kc": 1.15, "alerta": "Pele sensível. Cuidado com Sarna."},
+            "Atlantic": {"kc": 1.15, "alerta": "Chips. Evitar estresse hídrico (Coração Oco)."}
         },
         "fases": {
             "Vegetativo": {
-                "manejo": "Realizar a Amontoa bem feita. Proteger estolões.",
-                "alvos": "Larva Minadora, Rizoctonia, Vaquinha.",
-                "moleculas": "**Solo:** Azoxistrobina ou Tiametoxam.\n**Foliar:** Abamectina (Minadora) + Clorotalonil (Preventivo)."
+                "manejo": "Amontoa para proteger estolões. Monitorar Vaquinha/Minadora.",
+                "alvos": "Larva Minadora, Rizoctonia.",
+                "moleculas": "Abamectina, Tiametoxam (Solo), Azoxistrobina."
             },
             "Tuberização": {
-                "manejo": "Fase Crítica! Não deixar faltar água. Início do controle preventivo forte.",
+                "manejo": "Fase Crítica! Água constante. Início preventivo forte.",
                 "alvos": "Requeima (Phytophthora), Pinta Preta.",
-                "moleculas": "**Preventivo:** Mancozeb / Metiram.\n**Curativo (Se chover):** Metalaxil-M, Dimetomorfe, Mandipropamida."
+                "moleculas": "Mancozeb (Preventivo), Metalaxil-M/Dimetomorfe (Curativo)."
             },
             "Enchimento": {
                 "manejo": "Aporte alto de Potássio. Monitorar Mosca Branca.",
-                "alvos": "Requeima, Traça, Mosca Branca.",
-                "moleculas": "**Traça:** Clorantraniliprole ou Cipermetrina.\n**Doenças:** Fluazinan (esporicida)."
+                "alvos": "Mosca Branca, Traça.",
+                "moleculas": "Ciantraniliprole (Mosca), Espinosade (Traça)."
             },
             "Maturação": {
-                "manejo": "Dessecação. Cuidado com Sarna Prateada.",
+                "manejo": "Dessecação. Cuidado com danos na colheita.",
                 "alvos": "Sarna, Podridão Mole.",
-                "moleculas": "Evitar excesso de água. Diquat para dessecação."
+                "moleculas": "Diquat (Dessecação). Evitar excesso de umidade."
+            }
+        }
+    },
+    "Café (Arábica)": {
+        "vars": {
+            "Catuaí": {"kc": 1.1, "alerta": "Susceptível a Ferrugem e Broca."},
+            "Arara": {"kc": 1.2, "alerta": "Resistente a Ferrugem, mas olho na Cercospora."}
+        },
+        "fases": {
+            "Vegetativo": {
+                "manejo": "Adubação nitrogenada para enfolhamento.",
+                "alvos": "Bicho Mineiro.",
+                "moleculas": "Clorantraniliprole, Tiametoxam."
+            },
+            "Florada": {
+                "manejo": "Pulverização com Boro e Zinco para pegamento.",
+                "alvos": "Phoma, Mancha de Aureolada.",
+                "moleculas": "Boscalida, Piraclostrobina."
+            },
+            "Chumbinho": {
+                "manejo": "Início da expansão. Água crítica.",
+                "alvos": "Cercospora, Ferrugem.",
+                "moleculas": "Ciproconazol + Azoxistrobina (Via solo ou foliar)."
+            },
+            "Granação": {
+                "manejo": "Enchimento. Monitorar Broca do Café.",
+                "alvos": "Broca do Café.",
+                "moleculas": "Ciantraniliprole (Broca)."
+            }
+        }
+    },
+    "Tomate": {
+        "vars": {
+            "Italiano (Saladete)": {"kc": 1.2, "alerta": "Fundo Preto (Deficiência de Ca)."},
+            "Grape (Cereja)": {"kc": 1.1, "alerta": "Rachadura de frutos se oscilar água."}
+        },
+        "fases": {
+            "Vegetativo": {
+                "manejo": "Desbrota lateral. Condução.",
+                "alvos": "Mosca Branca, Tripes (Vira-Cabeça).",
+                "moleculas": "Acetamiprido, Espinetoram."
+            },
+            "Florada": {
+                "manejo": "Cálcio Foliar obrigatório.",
+                "alvos": "Botrytis, Oídio.",
+                "moleculas": "Mancozeb, Tebuconazol."
+            },
+            "Frutificação": {
+                "manejo": "Monitorar Tuta absoluta (Traça).",
+                "alvos": "Traça do Tomateiro, Requeima.",
+                "moleculas": "Clorfenapir (Traça), Mandipropamida (Requeima)."
             }
         }
     },
     "Mirtilo": {
         "vars": {
-            "Emerald": {"kc": 0.95, "alerta": "Vigorosa. pH do solo deve estar ácido (4.5-5.5)."},
-            "Biloxi": {"kc": 0.90, "alerta": "Ereta. Poda de limpeza central para entrada de luz."}
+            "Emerald": {"kc": 0.95, "alerta": "pH ácido (4.5-5.5). Vigorosa."},
+            "Biloxi": {"kc": 0.90, "alerta": "Poda de limpeza central."}
         },
         "fases": {
             "Brotação": {
-                "manejo": "Estimular enraizamento. Monitorar Cochonilha.",
-                "alvos": "Cochonilhas, Lagartas.",
-                "moleculas": "Óleo Mineral + Imidacloprido (Drench)."
+                "manejo": "Estimular raiz. Monitorar Cochonilha.",
+                "alvos": "Cochonilhas.",
+                "moleculas": "Óleo Mineral + Imidacloprido."
             },
             "Florada": {
-                "manejo": "Introduzir Polinizadores (Abelhas). Cuidado com químicos.",
-                "alvos": "Botrytis (Mofo Cinzento).",
-                "moleculas": "**Fungicidas Suaves:** Fludioxonil ou Ciprodinil (aplicar à noite)."
+                "manejo": "Polinizadores (Abelhas). Cuidado com químicos.",
+                "alvos": "Botrytis.",
+                "moleculas": "Fludioxonil (Noite)."
             },
             "Frutificação": {
-                "manejo": "Adubação sem Nitratos (Use Sulfato de Amônio).",
-                "alvos": "Antracnose, Ferrugem.",
-                "moleculas": "Azoxistrobina + Difenoconazol."
+                "manejo": "Adubação sem Nitratos (Use Amônio).",
+                "alvos": "Antracnose.",
+                "moleculas": "Azoxistrobina."
+            }
+        }
+    },
+    "Amora Preta": {
+        "vars": {
+            "Tupy": {"kc": 1.0, "alerta": "Tradicional. Exige frio ou quebra de dormência."},
+            "BRS Xingu": {"kc": 1.05, "alerta": "Sem espinhos. Exige tutoramento."}
+        },
+        "fases": {
+            "Brotação": {
+                "manejo": "Seleção de hastes produtivas.",
+                "alvos": "Ferrugem da Amora.",
+                "moleculas": "Tebuconazol."
+            },
+            "Frutificação": {
+                "manejo": "Monitorar Drosófila (mosca da fruta).",
+                "alvos": "Drosófila de Asa Manchada.",
+                "moleculas": "Espinosade (Isca tóxica)."
+            }
+        }
+    },
+    "Framboesa": {
+        "vars": {
+            "Heritage": {"kc": 1.1, "alerta": "Remontante (Produz na ponta e base)."},
+            "Golden Bliss": {"kc": 1.05, "alerta": "Fruto amarelo. Delicado."}
+        },
+        "fases": {
+            "Brotação": {
+                "manejo": "Poda de limpeza. Evitar adensamento.",
+                "alvos": "Ácaro Vermelho.",
+                "moleculas": "Abamectina."
+            },
+            "Florada/Fruto": {
+                "manejo": "Colheita diária. Fruto perecível.",
+                "alvos": "Botrytis, Podridão de Frutos.",
+                "moleculas": "Iprodiona (Respeitar carência)."
             }
         }
     },
     "Morango": {
         "vars": {
-            "San Andreas": {"kc": 0.85, "alerta": "Dia neutro. Muito sensível a Ácaro Rajado."},
-            "Albion": {"kc": 0.85, "alerta": "Fruto de sabor. Sensível a Oídio."}
+            "San Andreas": {"kc": 0.85, "alerta": "Sensível a Ácaros."},
+            "Albion": {"kc": 0.85, "alerta": "Sensível a Oídio."}
         },
         "fases": {
             "Vegetativo": {
-                "manejo": "Limpeza de folhas velhas. Retirada de estolões.",
+                "manejo": "Retirada de estolões.",
                 "alvos": "Oídio, Pulgão.",
-                "moleculas": "**Oídio:** Enxofre ou Triflumizol.\n**Pulgão:** Acetamiprido."
+                "moleculas": "Enxofre, Acetamiprido."
             },
-            "Florada/Fruto": {
-                "manejo": "Aplicação de Cálcio/Boro. Colheita frequente.",
-                "alvos": "Botrytis, Ácaro Rajado.",
-                "moleculas": "**Ácaro:** Abamectina ou Etoxazol.\n**Botrytis:** Iprodiona ou Procimidona."
+            "Frutificação": {
+                "manejo": "Cálcio/Boro. Colheita.",
+                "alvos": "Ácaro Rajado, Botrytis.",
+                "moleculas": "Etoxazol (Ácaro), Ciprodinil (Botrytis)."
             }
         }
     }
@@ -140,10 +227,10 @@ def analise_ia_gemini(api_key, imagem, cultura, contexto):
         Você é um Engenheiro Agrônomo Sênior (Fitopatologista).
         Analise esta imagem de {cultura}.
         Contexto atual: {contexto}.
-        1. Identifique a praga, doença ou deficiência nutricional.
+        1. Identifique a praga, doença ou deficiência.
         2. Indique o Ingrediente Ativo (químico) mais eficiente.
         3. Indique uma solução biológica/orgânica.
-        Seja técnico e direto.
+        Seja técnico.
         """
         response = model.generate_content([prompt, imagem])
         return response.text
@@ -161,25 +248,26 @@ with st.sidebar:
     vars_disponiveis = BANCO_MASTER[cultura_sel]['vars']
     var_sel = st.selectbox("Variedade:", list(vars_disponiveis.keys()))
     
+    # Tratamento seguro para fases
     fases_disponiveis = BANCO_MASTER[cultura_sel]['fases']
-    fase_sel = st.selectbox("Fase Fenológica:", list(fases_disponiveis.keys()))
+    lista_fases = list(fases_disponiveis.keys())
+    fase_sel = st.selectbox("Fase Fenológica:", lista_fases, index=min(1, len(lista_fases)-1))
     
     if 'data_plantio' not in st.session_state: st.session_state['data_plantio'] = date(2025, 11, 25)
     d_plantio = st.date_input("Data Início:", st.session_state['data_plantio'])
     dias_campo = (date.today() - d_plantio).days
     
     info_var = vars_disponiveis[var_sel]
-    st.info(f"🧬 **{var_sel}**\nIdade: {dias_campo} dias | Kc: {info_var['kc']}")
+    st.info(f"🧬 **{var_sel}** | Dias: {dias_campo} | Kc: {info_var['kc']}")
 
 # --- 5. DASHBOARD ---
-st.title("🛰️ Agro-Intel System v8.0")
+st.title("🛰️ Agro-Intel Omni v9.0")
 
 if weather_key:
-    # Cabeçalho
     st.markdown(f"""
     <div class="header-box">
         <h2 style="margin:0; color:white;">🚜 {cultura_sel} - {var_sel}</h2>
-        <p style="margin:0; opacity:0.9;">Fase Atual: {fase_sel} | 🚨 Ponto de Atenção: {info_var['alerta']}</p>
+        <p style="margin:0; opacity:0.9;">Fase: {fase_sel} | 🧬 Ponto Crítico: {info_var['alerta']}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -189,27 +277,25 @@ if weather_key:
     if not df.empty:
         hoje = df.iloc[0]
         
-        # KPIS
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("🌡️ Temperatura", f"{hoje['Temp']}°C", f"Umid: {hoje['Umid']}%")
         c2.metric("💧 VPD", f"{hoje['VPD']} kPa", "Risco" if hoje['VPD'] > 1.3 else "Ideal")
         c3.metric("💦 ETc (Consumo)", f"{hoje['ETc']} mm", f"Kc: {info_var['kc']}")
         c4.metric("🛡️ Delta T", f"{hoje['Delta T']}°C", "Ok" if 2 <= hoje['Delta T'] <= 8 else "Ruim")
 
-        # ABAS
         tab_tec, tab_clima, tab_ia, tab_fin, tab_gps = st.tabs(["📚 Protocolo Técnico", "📊 Clima", "👁️ IA Vision", "💰 Financeiro", "📡 GPS"])
 
-        # --- ABA 1: PROTOCOLO TÉCNICO (O CÉREBRO) ---
+        # --- ABA 1: PROTOCOLO TÉCNICO COMPLETO ---
         with tab_tec:
             dados_fase = fases_disponiveis[fase_sel]
             
-            # Análise Climática para Decisão Química
-            risco_clima = "Baixo"
-            recomendacao_clima = "Clima favorável. Use Protetores (Contato) para economizar e blindar a planta."
+            # Inteligência Climática
+            risco_txt = "Baixo"
+            recomendacao_clima = "✅ Clima seco. Use Protetores (Contato)."
             if hoje['Umid'] > 85 or hoje['Chuva'] > 2:
-                risco_clima = "ALTO"
-                recomendacao_clima = "⚠️ **UMIDADE ALTA:** Pressão de fungos severa. Priorize **SISTÊMICOS/CURATIVOS** e penetrantes."
-            
+                risco_txt = "ALTO"
+                recomendacao_clima = "⚠️ **ALERTA DE UMIDADE:** Alta pressão de fungos. Use **SISTÊMICOS**."
+
             c_tec1, c_tec2 = st.columns(2)
             
             with c_tec1:
@@ -219,19 +305,17 @@ if weather_key:
                     <p>{dados_fase['manejo']}</p>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                st.info(f"**Análise de Risco Climático de Hoje:**\n\n{recomendacao_clima}")
+                st.info(f"**Status Climático:** {recomendacao_clima}")
 
             with c_tec2:
                 st.markdown(f"""
                 <div class="quimica-box">
-                    <h4>🧪 Farmácia Digital (Ingredientes Ativos)</h4>
-                    <p><b>Alvos Principais:</b> {dados_fase['alvos']}</p>
+                    <h4>🧪 Farmácia Digital</h4>
+                    <p><b>Alvos:</b> {dados_fase['alvos']}</p>
                     <hr>
                     <p>{dados_fase['moleculas']}</p>
                 </div>
                 """, unsafe_allow_html=True)
-                st.caption("Nota: As moléculas citadas são Ingredientes Ativos. Consulte um Eng. Agrônomo para receituário.")
 
         # --- ABA 2: CLIMA ---
         with tab_clima:
@@ -240,21 +324,18 @@ if weather_key:
             fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo (ETc)', line=dict(color='#ef5350', width=2)))
             fig.update_layout(title="Balanço Hídrico Semanal", height=350)
             st.plotly_chart(fig, use_container_width=True)
-            balanco = df['Chuva'].sum() - df['ETc'].sum()
-            st.info(f"Balanço: {balanco:.1f} mm.")
+            st.info(f"Balanço: {df['Chuva'].sum() - df['ETc'].sum():.1f} mm.")
 
         # --- ABA 3: IA VISION ---
         with tab_ia:
-            st.write("Diagnóstico Fitopatológico por Foto (Gemini AI)")
-            img = st.camera_input("📸 Foto da Folha")
+            st.write("Diagnóstico por Imagem (Gemini)")
+            img = st.camera_input("📸 Foto")
             if not img: img = st.file_uploader("Upload", type=['jpg', 'png'])
-            
             if img and gemini_key:
                 st.image(img, width=200)
-                ctx = f"Cultura: {cultura_sel}. Umidade: {hoje['Umid']}%. Fase: {fase_sel}."
-                with st.spinner("Analisando patógenos..."):
-                    res = analise_ia_gemini(gemini_key, Image.open(img), cultura_sel, ctx)
-                    st.success(res)
+                ctx = f"Cultura: {cultura_sel}. Fase: {fase_sel}. Umidade: {hoje['Umid']}%."
+                with st.spinner("Analisando..."):
+                    st.success(analise_ia_gemini(gemini_key, Image.open(img), cultura_sel, ctx))
 
         # --- ABA 4: FINANCEIRO ---
         with tab_fin:
@@ -265,18 +346,16 @@ if weather_key:
             if st.button("Lançar"):
                 st.session_state['custos'].append({"Item": item, "Valor": valor})
                 st.success("Salvo!")
-            
             if st.session_state['custos']:
                 df_f = pd.DataFrame(st.session_state['custos'])
                 st.dataframe(df_f, use_container_width=True)
-                st.metric("Total Gasto", f"R$ {df_f['Valor'].sum():,.2f}")
+                st.metric("Total", f"R$ {df_f['Valor'].sum():,.2f}")
 
         # --- ABA 5: GPS ---
         with tab_gps:
             VIZINHOS = [{"nome": "Mucugê", "lat": -13.005, "lon": -41.371}, {"nome": "Barra da Estiva", "lat": -13.623, "lon": -41.326}, {"nome": "Cascavel", "lat": -13.196, "lon": -41.445}]
             map_data = pd.DataFrame([{"nome": "Sede", "lat": float(lat), "lon": float(lon)}] + VIZINHOS)
             st.map(map_data.rename(columns={"lat":"latitude", "lon":"longitude"}), zoom=9)
-            
             row = st.columns(3)
             for i, v in enumerate(VIZINHOS):
                 try:
