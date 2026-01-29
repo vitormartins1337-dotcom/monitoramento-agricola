@@ -7,99 +7,89 @@ from datetime import datetime, date
 
 # --- 1. CONFIGURAÇÃO VISUAL ---
 st.set_page_config(
-    page_title="Agro-Intel Chapada",
-    page_icon="🍓",
+    page_title="Agro-Intel Chapada Pro",
+    page_icon="🧪",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
-    div[data-testid="metric-container"] { background-color: #ffffff; border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .genetica-box { background: linear-gradient(to right, #2e7d32, #66bb6a); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .genetica-box h3 { color: white; margin: 0; }
-    .stAlert { border-radius: 6px; }
+    div[data-testid="metric-container"] { background-color: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 8px; }
+    .genetica-box { background: linear-gradient(to right, #1565c0, #42a5f5); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .alerta-box { background-color: #ffebee; border-left: 5px solid #d32f2f; padding: 15px; margin-top: 10px; border-radius: 5px; }
+    .manejo-box { background-color: #e8f5e9; border-left: 5px solid #2e7d32; padding: 15px; margin-top: 10px; border-radius: 5px; }
+    h3 { margin-top: 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS GENÉTICO (CHAPADA DIAMANTINA) ---
-BANCO_GENETICA = {
+# --- 2. CÉREBRO AGRONÔMICO (Manejo & Química) ---
+BANCO_AGRONOMICO = {
     "Batata (Solanum tuberosum)": {
         "variedades": {
-            "Orchestra (Pele Lisa)": {
-                "ciclo": 110, "t_base": 7, "kc_max": 1.15,
-                "alerta": "Alta produtividade exige K elevado. Monitorar Pinta Preta.",
-                "nutri": "Relação N:K de 1:1.6. Exige Magnésio extra para fotossíntese."
-            },
-            "Cupido (Precoce)": {
-                "ciclo": 90, "t_base": 7, "kc_max": 1.10,
-                "alerta": "Sensível à Requeima e Esverdeamento. Colheita rápida.",
-                "nutri": "Nitrogênio moderado para evitar excesso de folha. Foco em Calibre."
-            },
-            "Camila (Mesa)": {
-                "ciclo": 100, "t_base": 7, "kc_max": 1.15,
-                "alerta": "Pele sensível. Cuidado com dano mecânico e Sarna.",
-                "nutri": "Cálcio via solo e foliar essencial para resistência da pele."
-            },
-            "Atlantic (Chips)": {
-                "ciclo": 105, "t_base": 7, "kc_max": 1.15,
-                "alerta": "Monitorar Coração Oco. Exige Boro.",
-                "nutri": "Potássio Sulfato preferencial para matéria seca (Chips)."
-            }
+            "Orchestra": {"ciclo": 110, "kc": 1.15, "info": "Exigente em Potássio. Sensível a Pinta Preta."},
+            "Cupido": {"ciclo": 90, "kc": 1.10, "info": "Ciclo curto. Altíssima sensibilidade a Requeima."},
+            "Camila": {"ciclo": 100, "kc": 1.15, "info": "Pele sensível. Cuidado com sarna."},
+            "Atlantic": {"ciclo": 105, "kc": 1.15, "info": "Chips. Evitar oscilação hídrica (Coração Oco)."}
         },
-        "fases": ["Emergência", "Vegetativo", "Tuberização (Início)", "Enchimento", "Maturação"]
+        "fases": {
+            "Vegetativo": {
+                "manejo": "Realizar a Amontoa (Chegar terra) para proteger estolões. Monitorar Larva Minadora.",
+                "risco": ["Larva Minadora", "Rizoctonia"],
+                "moleculas": "Abamectina (Minadora), Azoxistrobina (Solo)."
+            },
+            "Tuberização (Crítico)": {
+                "manejo": "Irrigação constante. Fase crítica para definição de calibre. Não deixar faltar água.",
+                "risco": ["Requeima (Phytophthora)", "Pinta Preta (Alternaria)"],
+                "moleculas": "Preventivo: Mancozeb/Clorotalonil. Curativo: Metalaxil-M, Dimetomorfe, Mandipropamida."
+            },
+            "Maturação": {
+                "manejo": "Dessecação da rama. Cuidado com danos mecânicos na colheita.",
+                "risco": ["Traça da Batata", "Sarna"],
+                "moleculas": "Cipermetrina (Traça). Evitar excesso de água para não dar Sarna."
+            }
+        }
     },
     "Mirtilo (Vaccinium spp.)": {
         "variedades": {
-            "Emerald (Vigorosa)": {
-                "ciclo": 150, "t_base": 10, "kc_max": 0.95,
-                "alerta": "Baixa exigência de frio. Risco de Phytophthora em solo encharcado.",
-                "nutri": "Nitrogênio Amoniacal (Sulfato de Amônio). pH ideal 4.5-5.2."
-            },
-            "Biloxi (Ereta)": {
-                "ciclo": 160, "t_base": 10, "kc_max": 0.90,
-                "alerta": "Alta densidade. Poda de limpeza essencial para entrada de luz.",
-                "nutri": "Sensível a excesso de N. Adubação parcelada frequente."
-            }
+            "Emerald": {"ciclo": 150, "kc": 0.95, "info": "Vigorosa. Atenção ao pH (4.5-5.5)."},
+            "Biloxi": {"ciclo": 160, "kc": 0.90, "info": "Ereta. Exige poda de limpeza central."}
         },
-        "fases": ["Poda/Dormência", "Brotação", "Florada", "Frutificação (Verde)", "Colheita"]
-    },
-    "Amora Preta (Rubus spp.)": {
-        "variedades": {
-            "Tupy (Tradicional)": {
-                "ciclo": 130, "t_base": 10, "kc_max": 1.0,
-                "alerta": "Exige tutoramento. Rustica, mas sensível a Antracnose.",
-                "nutri": "Nitrogênio na brotação. Potássio no enchimento."
+        "fases": {
+            "Poda/Dormência": {
+                "manejo": "Aplicação de Cianamida Hidrogenada (se necessário) para uniformizar brotação.",
+                "risco": ["Cochonilhas"],
+                "moleculas": "Óleo Mineral + Imidacloprido."
             },
-            "BRS Xingu (Sem Espinho)": {
-                "ciclo": 140, "t_base": 10, "kc_max": 1.05,
-                "alerta": "Maturação mais tardia. Facilidade de colheita.",
-                "nutri": "Cálcio para firmeza pós-colheita."
-            }
-        },
-        "fases": ["Poda", "Crescimento de Hastes", "Florada", "Maturação"]
-    },
-    "Framboesa (Rubus idaeus)": {
-        "variedades": {
-            "Heritage (Vermelha)": {
-                "ciclo": 120, "t_base": 9, "kc_max": 1.1,
-                "alerta": "Remontante (produz na ponta). Poda drástica ou seletiva.",
-                "nutri": "Ferro e Manganês via foliar se o solo for alcalino."
+            "Florada": {
+                "manejo": "Introduzir abelhas (Bombus ou Apis). Evitar inseticidas fortes.",
+                "risco": ["Botrytis (Mofo Cinzento)"],
+                "moleculas": "Fludioxonil, Ciprodinil (Seguros para abelhas à noite)."
             },
-            "Golden Bliss (Amarela)": {
-                "ciclo": 125, "t_base": 9, "kc_max": 1.05,
-                "alerta": "Fruto delicado. Colheita diária obrigatória.",
-                "nutri": "Potássio alto para Brix."
+            "Frutificação": {
+                "manejo": "Fertirrigação sem Nitratos (usar Amônio). Monitorar Ferrugem.",
+                "risco": ["Ferrugem", "Antracnose"],
+                "moleculas": "Tebuconazol (Cuidado com carência), Azoxistrobina."
             }
-        },
-        "fases": ["Brotação", "Florada", "Frutificação", "Colheita"]
+        }
     },
     "Morango (Fragaria x ananassa)": {
         "variedades": {
-            "San Andreas": {"ciclo": 180, "t_base": 10, "kc_max": 0.85, "alerta": "Sensível a Ácaros.", "nutri": "Cálcio constante."},
-            "Albion": {"ciclo": 180, "t_base": 10, "kc_max": 0.85, "alerta": "Sabor premium. Poda de estolões.", "nutri": "K elevado."}
+            "San Andreas": {"ciclo": 180, "kc": 0.85, "info": "Dia neutro. Sensível a Ácaro Rajado."},
+            "Albion": {"ciclo": 180, "kc": 0.85, "info": "Fruto doce. Sensível a Oídio."}
         },
-        "fases": ["Plantio", "Vegetativo", "Florada", "Colheita"]
+        "fases": {
+            "Vegetativo": {
+                "manejo": "Retirada de estolões para focar em coroa. Limpeza de folhas velhas.",
+                "risco": ["Oídio", "Pulgão"],
+                "moleculas": "Enxofre (Oídio), Acetamiprido (Pulgão)."
+            },
+            "Frutificação": {
+                "manejo": "Aplicação de Cálcio e Silício. Colheita frequente.",
+                "risco": ["Botrytis", "Ácaro Rajado"],
+                "moleculas": "Abamectina/Etoxazol (Ácaros). Iprodiona (Botrytis)."
+            }
+        }
     }
 }
 
@@ -130,95 +120,118 @@ def get_forecast(api_key, lat, lon, kc_max):
             dt, vpd = calc_agro(item['main']['temp'], item['main']['humidity'])
             chuva = sum([r['list'][i+j].get('rain', {}).get('3h', 0) for j in range(8) if i+j < len(r['list'])])
             et0 = 0.0023 * (item['main']['temp'] + 17.8) * (item['main']['temp'] ** 0.5) * 0.408
-            
             dados.append({
                 'Data': datetime.fromtimestamp(item['dt']).strftime('%d/%m'),
                 'Temp': item['main']['temp'],
-                'Chuva (mm)': round(chuva, 1),
-                'VPD (kPa)': vpd,
+                'Chuva': round(chuva, 1),
+                'VPD': vpd,
                 'Delta T': dt,
-                'Umid (%)': item['main']['humidity'],
-                'ETc (mm)': round(et0 * kc_max, 2)
+                'Umid': item['main']['humidity'],
+                'ETc': round(et0 * kc_max, 2)
             })
         return pd.DataFrame(dados)
     except: return pd.DataFrame()
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
-    st.header("🎛️ Configuração da Lavoura")
-    api_key = st.text_input("🔑 Chave API OpenWeather", type="password")
+    st.header("🎛️ Controle da Lavoura")
+    api_key = st.text_input("🔑 Chave API", type="password")
     st.divider()
     
-    # SELEÇÃO DE CULTURA E VARIEDADE
-    cultura = st.selectbox("1. Cultura:", list(BANCO_GENETICA.keys()))
-    lista_vars = list(BANCO_GENETICA[cultura]['variedades'].keys())
+    cultura = st.selectbox("1. Cultura:", list(BANCO_AGRONOMICO.keys()))
+    lista_vars = list(BANCO_AGRONOMICO[cultura]['variedades'].keys())
     variedade = st.selectbox("2. Cultivar:", lista_vars)
     
-    info_var = BANCO_GENETICA[cultura]['variedades'][variedade]
+    # Busca Info
+    info_cultura = BANCO_AGRONOMICO[cultura]
+    info_var = info_cultura['variedades'][variedade]
+    lista_fases = list(info_cultura['fases'].keys())
     
-    data_plantio = st.date_input("3. Data Início/Poda:", date(2025, 11, 25))
+    data_plantio = st.date_input("3. Data Início:", date(2025, 11, 25))
     dias_campo = (date.today() - data_plantio).days
     
-    fase_atual = st.selectbox("4. Fase Fenológica:", BANCO_GENETICA[cultura]['fases'], index=1)
+    fase_atual = st.selectbox("4. Fase Fenológica:", lista_fases, index=1)
     
-    st.info(f"🧬 **{variedade}**\nCiclo: {info_var['ciclo']} dias | Kc Pico: {info_var['kc_max']}")
+    st.info(f"🧬 **{variedade}**\nIdade: {dias_campo} dias")
 
 # --- 5. DASHBOARD ---
-st.title("🛰️ Agro-Intel Chapada v5.0")
+st.title("🛰️ Agro-Intel v6.0")
 
 if api_key:
+    # Dados da Fase Selecionada
+    dados_fase = info_cultura['fases'][fase_atual]
+
     st.markdown(f"""
     <div class="genetica-box">
-        <h3>🚜 Manejo: {cultura.split('(')[0]} - {variedade.split('(')[0]}</h3>
-        <p><strong>Ponto Crítico:</strong> {info_var['alerta']} | <strong>Idade:</strong> {dias_campo} dias</p>
+        <h3>🚜 {cultura.split('(')[0]} - {variedade} ({fase_atual})</h3>
+        <p>{info_var['info']}</p>
     </div>
     """, unsafe_allow_html=True)
 
-    df = get_forecast(api_key, FAZENDA['lat'], FAZENDA['lon'], info_var['kc_max'])
+    df = get_forecast(api_key, FAZENDA['lat'], FAZENDA['lon'], info_var['kc'])
     
     if not df.empty:
         hoje = df.iloc[0]
         
         # KPIS
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("🌡️ Temperatura", f"{hoje['Temp']} °C", f"Umid: {hoje['Umid (%)']}%")
-        c2.metric("💧 VPD (Pressão)", f"{hoje['VPD (kPa)']} kPa", "Ideal" if 0.4 <= hoje['VPD (kPa)'] <= 1.3 else "Risco")
-        c3.metric("💦 ETc (Consumo)", f"{hoje['ETc (mm)']} mm", f"Kc: {info_var['kc_max']}")
-        gda_estimado = dias_campo * 12 # Média simples
-        c4.metric("📈 GDA Acumulado", f"{gda_estimado} GDA", f"Base {info_var['t_base']}°C")
+        c1.metric("🌡️ Temperatura", f"{hoje['Temp']} °C", f"Umid: {hoje['Umid']}%")
+        c2.metric("💧 VPD", f"{hoje['VPD']} kPa", "Ideal" if 0.4 <= hoje['VPD'] <= 1.3 else "Risco")
+        c3.metric("💦 ETc (Consumo)", f"{hoje['ETc']} mm", f"Kc: {info_var['kc']}")
+        c4.metric("🛡️ Delta T", f"{hoje['Delta T']} °C", "Ok" if 2 <= hoje['Delta T'] <= 8 else "Ruim")
 
-        # ABAS
-        tab1, tab2, tab3 = st.tabs(["📊 Balanço Hídrico", "🧬 Diagnóstico & Nutrição", "📡 Radar GPS"])
+        # ABAS PRINCIPAIS
+        tab1, tab2, tab3 = st.tabs(["📚 Protocolo Agronômico", "📊 Clima & Irrigação", "📡 Radar GPS"])
 
         with tab1:
-            fig = go.Figure()
-            fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva (mm)'], name='Chuva', marker_color='#29b6f6'))
-            fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc (mm)'], name='Consumo (ETc)', line=dict(color='#ef5350', width=2, dash='dot')))
-            fig.update_layout(title="Oferta (Chuva) vs Demanda (Transpiração)", height=350)
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("### 📋 Planejamento Técnico da Semana")
             
-            balanco = df['Chuva (mm)'].sum() - df['ETc (mm)'].sum()
-            if balanco > 0: st.info(f"**SUPERÁVIT (+{balanco:.1f} mm):** Solo úmido. Atenção a doenças de raiz.")
-            else: st.warning(f"**DÉFICIT ({balanco:.1f} mm):** Necessário irrigar para manter turgidez.")
+            col_tec1, col_tec2 = st.columns(2)
+            
+            with col_tec1:
+                st.markdown(f"""
+                <div class="manejo-box">
+                    <h4>🛠️ Manejo Cultural ({fase_atual})</h4>
+                    <p>{dados_fase['manejo']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Análise de Risco Climático para Doenças
+                risco_clima = "Baixo"
+                if hoje['Umid'] > 85 or hoje['Chuva'] > 2:
+                    risco_clima = "ALTO (Umidade Elevada)"
+                    cor_risco = "red"
+                else:
+                    cor_risco = "green"
+                
+                st.write(f"**Pressão Climática Hoje:** :{cor_risco}[{risco_clima}]")
+
+            with col_tec2:
+                st.markdown(f"""
+                <div class="alerta-box">
+                    <h4>💊 Farmácia Digital (Defensivos Sugeridos)</h4>
+                    <p><b>Alvos Principais:</b> {', '.join(dados_fase['risco'])}</p>
+                    <hr>
+                    <p><b>🧪 Moléculas Indicadas:</b><br>{dados_fase['moleculas']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if risco_clima == "ALTO (Umidade Elevada)":
+                    st.warning("⚠️ **Dica de Especialista:** Com a umidade alta detectada hoje, priorize produtos **SISTÊMICOS** ou de **PROFUNDIDADE**, pois produtos de contato podem ser lavados ou não ter eficácia curativa.")
+                else:
+                    st.success("✅ **Dica de Especialista:** Clima seco. Ótimo momento para produtos de **CONTATO/PROTETORES** (Mancozeb, Cobre, Enxofre) para blindar a planta.")
+
+            st.caption("⚠️ Nota: As moléculas citadas são referências técnicas de Ingrediente Ativo. Consulte sempre um Receituário Agronômico para marcas comerciais e doses.")
 
         with tab2:
-            c_diag1, c_diag2 = st.columns(2)
-            with c_diag1:
-                st.subheader("🛡️ Alerta Fitossanitário")
-                if "Batata" in cultura and len(df[df['Umid (%)'] > 85]) > 2:
-                    st.error("🚨 **ALERTA DE REQUEIMA:** Alta umidade detectada. Reduza intervalo de fungicida sistêmico.")
-                elif "Mirtilo" in cultura and balanco > 10:
-                    st.error("🚨 **ALERTA DE RAIZ:** Solo saturado. Risco de Phytophthora. Melhore a drenagem.")
-                else:
-                    st.success("✅ Condições climáticas sob controle.")
-                
-                st.write(f"**VPD Hoje:** {hoje['VPD (kPa)']} kPa")
-
-            with c_diag2:
-                st.subheader("💊 Nutrição Específica")
-                st.info(f"**Diretriz ({variedade}):** {info_var['nutri']}")
-                if "Tuberização" in fase_atual or "Frutificação" in fase_atual:
-                    st.markdown("**Dica:** Fase de enchimento. Aumente o Potássio (K) para ganho de peso e Brix.")
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva', marker_color='#29b6f6'))
+            fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo (ETc)', line=dict(color='#ef5350', width=2)))
+            fig.update_layout(title="Balanço Hídrico", height=350)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            balanco = df['Chuva'].sum() - df['ETc'].sum()
+            st.info(f"Balanço Semanal: {balanco:.1f} mm")
 
         with tab3:
             col_gps = st.columns(len(VIZINHOS))
@@ -229,6 +242,7 @@ if api_key:
                     col_gps[i].markdown(f"<div style='background:{cor};padding:10px;border-radius:5px;text-align:center'><b>{v['nome'].split()[0]}</b><br>{r['main']['temp']:.0f}°C</div>", unsafe_allow_html=True)
                 except: pass
             
+            # Mapa (conversão segura)
             map_data = pd.DataFrame([FAZENDA] + VIZINHOS).rename(columns={"lat": "latitude", "lon": "longitude"})
             map_data['latitude'] = map_data['latitude'].astype(float)
             map_data['longitude'] = map_data['longitude'].astype(float)
