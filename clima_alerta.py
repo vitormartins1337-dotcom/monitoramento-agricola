@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
 # --- 1. CONFIGURAÇÕES DE ALTA PRECISÃO (GPS) ---
-MODO_TESTE = True 
+MODO_TESTE = False 
 DATA_PLANTIO = datetime(2025, 11, 25) 
 KC_ATUAL = 0.75 
 FUSO_BRASIL = timezone(timedelta(hours=-3))
