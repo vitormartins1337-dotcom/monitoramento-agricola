@@ -10,145 +10,149 @@ import folium
 from folium.plugins import LocateControl, Fullscreen
 from streamlit_folium import st_folium
 
-# --- 1. CONFIGURAÇÃO DE ALTO NÍVEL ---
-st.set_page_config(
-    page_title="Agro-Intel Ultimate",
-    page_icon="🛰️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- 1. CONFIGURAÇÃO VISUAL ENTERPRISE ---
+st.set_page_config(page_title="Agro-Intel Enterprise", page_icon="🌱", layout="wide")
 
-# --- ESTILIZAÇÃO CSS ENTERPRISE ---
 st.markdown("""
 <style>
-    .main { background-color: #f4f6f9; }
-    .stMetric { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .header-style { background: linear-gradient(90deg, #1b5e20 0%, #4caf50 100%); color: white; padding: 25px; border-radius: 15px; margin-bottom: 25px; }
-    .tech-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #2e7d32; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .chem-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #d32f2f; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .radar-box { background-color: #e3f2fd; border: 1px solid #90caf9; padding: 15px; border-radius: 10px; text-align: center; }
-    h3 { color: #1b5e20; }
+    .main { background-color: #f0f2f6; }
+    .header-main { background: linear-gradient(90deg, #166534 0%, #15803d 100%); padding: 30px; border-radius: 15px; color: white; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .control-panel { background-color: white; padding: 25px; border-radius: 15px; border: 1px solid #e5e7eb; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .metric-box { background: white; padding: 20px; border-radius: 10px; border-left: 5px solid #166534; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .pest-card { background: white; border: 1px solid #fee2e2; border-left: 5px solid #dc2626; padding: 20px; border-radius: 10px; margin-bottom: 15px; }
+    .pest-title { color: #991b1b; font-weight: bold; font-size: 1.2em; }
+    .chem-tag { background-color: #fef2f2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-size: 0.9em; border: 1px solid #fecaca; }
+    .bio-tag { background-color: #f0fdf4; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 0.9em; border: 1px solid #bbf7d0; }
+    .info-text { font-size: 0.9em; color: #4b5563; margin-top: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS AGRONÔMICO COMPLETO (SEM RESUMOS) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO (ESTENDIDO E PROFISSIONAL) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
+        "desc_cultura": "Cultura exigente em fotoperíodo e termoperíodo. Temperaturas noturnas acima de 20°C inibem a tuberização.",
         "vars": {
-            "Orchestra": {"kc": 1.15, "gda_meta": 1600, "info": "Pele lisa, polpa amarela. Alta exigência de Potássio (K) e Boro (B). Sensível a Pinta Preta."},
-            "Cupido": {"kc": 1.10, "gda_meta": 1400, "info": "Ciclo ultra-curto (90 dias). Extrema sensibilidade à Requeima. Exige colheita rápida."},
-            "Camila": {"kc": 1.15, "gda_meta": 1550, "info": "Referência em mercado fresco. Atenção redobrada com Sarna Comum e Rhizoctonia."},
-            "Atlantic": {"kc": 1.15, "gda_meta": 1650, "info": "Padrão industrial (Chips). Monitorar Coração Oco (Cálcio) e Matéria Seca."}
+            "Orchestra": {"kc": 1.15, "gda_meta": 1600, "info": "Alta exigência de K. Ciclo médio. Resistente a vírus Y."},
+            "Cupido": {"kc": 1.10, "gda_meta": 1400, "info": "Precoce. Baixa dormência. Sensível a Metribuzin."},
+            "Camila": {"kc": 1.15, "gda_meta": 1550, "info": "Pele lavada. Exigente em Boro e Cálcio."},
+            "Atlantic": {"kc": 1.15, "gda_meta": 1650, "info": "Matéria seca alta (Chips). Monitorar nível de Nitrogênio na maturação."}
         },
         "fases": {
-            "Emergência (0-20 dias)": {
-                "desc": "Brotamento e estabelecimento.",
-                "fisio": "Dependência das reservas do tubérculo-mãe. Sistema radicular frágil.",
-                "riscos": "Rhizoctonia (Canela Preta), Pectobacterium (Podridão Mole).",
-                "quimica": "<b>Sulco de Plantio:</b> Azoxistrobina (Amistar) + Tiametoxam (Actara) ou Fipronil.\n<b>Herbicida:</b> Metribuzin (Sencor) em pré-emergência.",
-                "bio": "<i>Trichoderma harzianum</i> no sulco + Ácidos Húmicos."
+            "Emergência (0-20d)": {"desc": "Estabelecimento.", "manejo": "Solo friável.", "quim": "Azoxistrobina.", "bio": "Trichoderma asperellum."},
+            "Vegetativo (20-35d)": {"desc": "Expansão IAF.", "manejo": "Amontoa.", "quim": "Mancozeb.", "bio": "Bacillus subtilis."},
+            "Tuberização (35-50d)": {"desc": "Ganchos.", "manejo": "Água crítica.", "quim": "Mandipropamida.", "bio": "Aminoácidos."},
+            "Enchimento (50-80d)": {"desc": "Expansão.", "manejo": "Sanidade total.", "quim": "Ciantraniliprole.", "bio": "Potássio orgânico."},
+            "Maturação (80d+)": {"desc": "Cura.", "manejo": "Dessecação.", "quim": "Diquat.", "bio": "Silicato."}
+        },
+        "pragas_doencas": {
+            "Requeima (Phytophthora infestans)": {
+                "sintomas": "Manchas oleosas nas folhas que evoluem para necrose. Micélio branco na face inferior em alta umidade.",
+                "condicao": "Frio (12-20°C) + Umidade > 90%.",
+                "quimico": "Metalaxil-M + Mancozeb, Mandipropamida (Revus), Fluazinam, Cimoxanil.",
+                "biologico": "Bacillus subtilis (Serenade) preventivo, Extrato de Melaleuca."
             },
-            "Vegetativo (20-35 dias)": {
-                "desc": "Fechamento de linhas.",
-                "fisio": "Expansão de IAF (Índice de Área Foliar). Alta demanda de Nitrogênio.",
-                "riscos": "Vaquinha (Diabrotica), Larva Minadora, Míldio inicial.",
-                "quimica": "<b>Preventivos:</b> Mancozeb (Dithane), Clorotalonil (Bravonil).\n<b>Inseticidas:</b> Lambda-Cialotrina (Karate), Acetamiprido.",
-                "bio": "<i>Beauveria bassiana</i> para insetos mastigadores + Bokashi líquido."
+            "Pinta Preta (Alternaria solani)": {
+                "sintomas": "Manchas necróticas em anéis concêntricos (alvo).",
+                "condicao": "Alternância de umidade e calor (>25°C).",
+                "quimico": "Tebuconazol, Azoxistrobina, Boscalida (Cantus).",
+                "biologico": "Bacillus amyloliquefaciens."
             },
-            "Tuberização (35-50 dias)": {
-                "desc": "Início dos ganchos.",
-                "fisio": "Inversão Hormonal (Giberelina cai, Ácido Jasmônico sobe). Fase crítica para água.",
-                "riscos": "Requeima (Phytophthora), Sarna (Streptomyces).",
-                "quimica": "<b>Sistêmicos Requeima:</b> Mandipropamida (Revus), Metalaxil-M (Ridomil Gold), Fluazinam (Shirlan).\n<b>Bacteriose:</b> Kasugamicina.",
-                "bio": "<i>Bacillus subtilis</i> (Serenade) para sanidade de solo."
+            "Vaquinha (Diabrotica speciosa)": {
+                "sintomas": "Folhas perfuradas (adulto) e danos nos tubérculos (larva alfinete).",
+                "condicao": "Todo o ciclo.",
+                "quimico": "Lambda-Cialotrina, Acetamiprido, Tiametoxam.",
+                "biologico": "Beauveria bassiana, Metarhizium anisopliae."
             },
-            "Enchimento (50-80 dias)": {
-                "desc": "Expansão de tubérculos.",
-                "fisio": "Dreno forte de K e Mg. Translocação de fotoassimilados.",
-                "riscos": "Mosca Branca, Traça (Tuta/Phthorimaea), Alternaria (Pinta Preta).",
-                "quimica": "<b>Mosca Branca:</b> Ciantraniliprole (Benévia), Espirotesifeno (Oberon).\n<b>Pinta Preta:</b> Tebuconazol (Folicur), Boscalida (Cantus).",
-                "bio": "Extrato de Algas (Ascophyllum) + Potássio Foliar."
+            "Traça (Phthorimaea operculella)": {
+                "sintomas": "Minas nas folhas e galerias nos tubérculos.",
+                "condicao": "Clima seco e quente.",
+                "quimico": "Clorfenapir, Indoxacarbe, Espinosade.",
+                "biologico": "Bacillus thuringiensis kurstaki, Trichogramma pretiosum."
+            }
+        }
+    },
+    "Tomate (Solanum lycopersicum)": {
+        "t_base": 10,
+        "desc_cultura": "Hortaliça de fruto climatério. VPD ideal entre 0.8 e 1.2 kPa para evitar fundo preto.",
+        "vars": {
+            "Italiano": {"kc": 1.2, "gda_meta": 1600, "info": "Fruto alongado. Exigente em Cálcio."},
+            "Grape": {"kc": 1.1, "gda_meta": 1450, "info": "Alto Brix. Sensível a rachaduras."}
+        },
+        "fases": {
+            "Vegetativo": {"desc": "Crescimento.", "manejo": "Desbrota.", "quim": "Imidacloprido.", "bio": "Bokashi."},
+            "Frutificação": {"desc": "Engorda.", "manejo": "Cálcio foliar.", "quim": "Cobre.", "bio": "Algas."}
+        },
+        "pragas_doencas": {
+            "Traça do Tomateiro (Tuta absoluta)": {
+                "sintomas": "Minas parenquimais nas folhas e frutos.",
+                "condicao": "Alta temperatura.",
+                "quimico": "Clorantraniliprole, Teflubenzurom, Abamectina.",
+                "biologico": "Trichogramma pretiosum, Bacillus thuringiensis."
             },
-            "Maturação (80+ dias)": {
-                "desc": "Senescência e cura.",
-                "fisio": "Suberização da pele. Conversão de açúcares em amido.",
-                "riscos": "Podridão úmida pós-colheita, Larva Alfinete.",
-                "quimica": "<b>Dessecação:</b> Diquat (Reglone) ou Carfentrazona.\n<b>Solo:</b> Monitorar pragas de solo.",
-                "bio": "Suspender Nitrogênio. Aplicação de Silício."
+            "Vira-Cabeça (Tospovirus)": {
+                "sintomas": "Bronqueamento e necrose do topo. Transmitido por Tripes.",
+                "condicao": "Presença do vetor (Tripes).",
+                "quimico": "Espinetoram (Delegate), Formetanato (Controle do vetor).",
+                "biologico": "Beauveria bassiana, Amblyseius (predador)."
             }
         }
     },
     "Café (Coffea arabica)": {
         "t_base": 10,
+        "desc_cultura": "Perene. Indução floral depende de déficit hídrico seguido de chuva.",
         "vars": {
-            "Catuaí": {"kc": 1.1, "gda_meta": 3000, "info": "Qualidade de bebida excelente. Suscetível à Ferrugem e Nematoides."},
-            "Arara": {"kc": 1.2, "gda_meta": 2900, "info": "Imune à Ferrugem. Alta produtividade. Maturação tardia."}
+            "Catuaí": {"kc": 1.1, "gda_meta": 3000, "info": "Produtivo. Exige controle de ferrugem."},
+            "Arara": {"kc": 1.2, "gda_meta": 2900, "info": "Resistente/Imune a ferrugem."}
         },
         "fases": {
-            "Florada": {
-                "desc": "Antese e Pegamento.",
-                "fisio": "Alta demanda de energia. Necessidade crítica de Boro e Zinco.",
-                "riscos": "Phoma (Mancha de Phoma), Mancha Aureolada.",
-                "quimica": "<b>Fungicidas:</b> Boscalida (Cantus), Piraclostrobina (Comet).\n<b>Nutrição:</b> Cálcio + Boro via foliar.",
-                "bio": "Aminoácidos livres (anti-estresse)."
+            "Florada": {"desc": "Antese.", "manejo": "Polinização.", "quim": "Cálcio+Boro.", "bio": "Algas."},
+            "Chumbinho": {"desc": "Expansão.", "manejo": "Adubação N.", "quim": "Fungicidas.", "bio": "Aminoácidos."}
+        },
+        "pragas_doencas": {
+            "Ferrugem (Hemileia vastatrix)": {
+                "sintomas": "Pústulas alaranjadas na face inferior das folhas.",
+                "condicao": "Umidade alta e sombreamento.",
+                "quimico": "Ciproconazol, Epoxiconazol, Piraclostrobina.",
+                "biologico": "Bacillus subtilis (preventivo)."
             },
-            "Chumbinho": {
-                "desc": "Expansão rápida.",
-                "fisio": "Divisão celular intensa. Definição do tamanho da peneira.",
-                "riscos": "Cercospora (Olho pardo), Ferrugem (se não for resistente).",
-                "quimica": "<b>Sistêmicos:</b> Ciproconazol + Azoxistrobina (Priori Xtra), Epoxiconazol.\n<b>Foliar:</b> Cobre fixo.",
-                "bio": "Bioestimulantes à base de Algas."
+            "Broca do Café (Hypothenemus hampei)": {
+                "sintomas": "Furos na região da coroa do fruto.",
+                "condicao": "Frutos em trânsito/maturação.",
+                "quimico": "Ciantraniliprole, Clorantraniliprole.",
+                "biologico": "Beauveria bassiana (Aplicação em dias úmidos)."
             }
         }
     },
-    "Tomate": {
-        "t_base": 10,
-        "vars": {
-            "Italiano": {"kc": 1.2, "gda_meta": 1600, "info": "Fruto alongado. Atenção ao Fundo Preto (Deficiência de Ca)."},
-            "Grape": {"kc": 1.1, "gda_meta": 1450, "info": "Alto teor de açúcar (Brix). Sensível a rachaduras."}
-        },
-        "fases": {
-            "Vegetativo": {"desc": "Formação de hastes.", "fisio": "Estruturação.", "riscos": "Tripes (Vira-cabeça), Geminivírus.", "quimica": "<b>Vetores:</b> Espinetoram (Delegate), Imidacloprido.", "bio": "Óleo de Neem + Enxofre."},
-            "Frutificação": {"desc": "Engorda.", "fisio": "Dreno de Potássio.", "riscos": "Requeima, Traça do Tomateiro.", "quimica": "<b>Requeima:</b> Cimoxanil, Dimetomorfe.\n<b>Traça:</b> Clorfenapir, Indoxacarbe.", "bio": "<i>Bacillus thuringiensis</i> (Bt)."}
-        }
-    },
-    "Mirtilo (Blueberry)": {
+    "Mirtilo (Vaccinium spp.)": {
         "t_base": 7,
+        "desc_cultura": "Exige solo ácido (pH 4.5-5.5) e rico em matéria orgânica. Sensível a nitratos.",
         "vars": {
-            "Emerald": {"kc": 0.95, "gda_meta": 1800, "info": "Vigorosa. Exige pH ácido (4.5 - 5.0). Alta produtividade."},
-            "Biloxi": {"kc": 0.90, "gda_meta": 1900, "info": "Baixa exigência de frio. Porte ereto. Rústica."}
+            "Emerald": {"kc": 0.95, "gda_meta": 1800, "info": "Baixo frio. Vigorosa."},
+            "Biloxi": {"kc": 0.90, "gda_meta": 1900, "info": "Rústica. Ereta."}
         },
         "fases": {
-            "Brotação": {"desc": "Fluxo vegetativo.", "fisio": "Mobilização de reservas.", "riscos": "Cochonilhas, Oídio.", "quimica": "Óleo Mineral, Enxofre.", "bio": "Bokashi sólido."},
-            "Florada": {"desc": "Polinização.", "fisio": "Sensível a abortamento.", "riscos": "Botrytis (Mofo Cinzento).", "quimica": "<b>Botrytis:</b> Fludioxonil + Ciprodinil (Switch). Não aplicar inseticidas tóxicos às abelhas.", "bio": "Cálcio e Boro."},
-            "Frutificação": {"desc": "Maturação.", "fisio": "Acúmulo de Antocianinas.", "riscos": "Antracnose (Glomerella).", "quimica": "Azoxistrobina, Difenoconazol.", "bio": "Sulfato de Potássio (Sabor)."}
-        }
-    },
-    "Morango": {
-        "t_base": 7,
-        "vars": {
-            "San Andreas": {"kc": 0.85, "gda_meta": 1200, "info": "Dia neutro. Precoce. Sensível a Ácaro Rajado."},
-            "Albion": {"kc": 0.85, "gda_meta": 1250, "info": "Dia neutro. Frutos grandes. Sensível a Oídio."}
+            "Florada": {"desc": "Polinização.", "manejo": "Abelhas.", "quim": "Sem inseticidas.", "bio": "Boro."},
+            "Crescimento": {"desc": "Expansão.", "manejo": "pH água.", "quim": "Enxofre.", "bio": "Ácidos Húmicos."}
         },
-        "fases": {
-            "Florada": {"desc": "Florescimento contínuo.", "fisio": "Polinização.", "riscos": "Mofo Cinzento (Botrytis).", "quimica": "Iprodiona, Procimidona, Captafol.", "bio": "Clonostachys rosea."},
-            "Colheita": {"desc": "Maturação.", "fisio": "Açúcares.", "riscos": "Ácaro Rajado, Drosophila.", "quimica": "<b>Ácaro:</b> Abamectina, Etoxazol.\n<b>Drosófila:</b> Espinosade (Trace).", "bio": "Predadores naturais (Neoseiulus)."}
-        }
-    },
-    "Framboesa/Amora": {
-        "t_base": 7,
-        "vars": {
-            "Heritage (Framboesa)": {"kc": 1.1, "gda_meta": 1300, "info": "Remontante. Produz no ano."},
-            "Tupy (Amora)": {"kc": 1.0, "gda_meta": 1500, "info": "Exige poda drástica. Fruto equilibrado."}
-        },
-        "fases": {
-            "Frutificação": {"desc": "Bagas.", "fisio": "Acúmulo de sólidos solúveis.", "riscos": "Ferrugem, Drosófila suzukii.", "quimica": "<b>Ferrugem:</b> Tebuconazol.\n<b>Mosca:</b> Espinosade, Isca tóxica.", "bio": "Armadilhas de vinagre."}
+        "pragas_doencas": {
+            "Antracnose (Colletotrichum)": {
+                "sintomas": "Manchas deprimidas nos frutos (maduros) e folhas.",
+                "condicao": "Calor e chuva.",
+                "quimico": "Azoxistrobina, Difenoconazol, Captana.",
+                "biologico": "Bacillus amyloliquefaciens."
+            },
+            "Botrytis (Mofo Cinzento)": {
+                "sintomas": "Fungo cinza nas flores e frutos.",
+                "condicao": "Alta umidade na florada.",
+                "quimico": "Fludioxonil + Ciprodinil (Switch), Iprodiona.",
+                "biologico": "Clonostachys rosea, Ulocladium oudemansii."
+            }
         }
     }
 }
 
-# --- 3. MOTORES DE CÁLCULO E API ---
+# --- 3. MOTORES DE INTEGRAÇÃO (API) ---
 def get_coords(city, key):
     try:
         url = f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=1&appid={key}"
@@ -156,41 +160,42 @@ def get_coords(city, key):
         if r: return r[0]['lat'], r[0]['lon']
     except: return None, None
 
-def get_forecast(lat, lon, key, kc, t_base):
+def get_forecast_full(lat, lon, key, t_base, kc):
     try:
         url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={key}&units=metric&lang=pt_br"
         r = requests.get(url).json()
         dados = []
         if 'list' in r:
-            for item in r['list']: # Pega todos os pontos (3h em 3h)
+            for item in r['list']:
                 t = item['main']['temp']
                 u = item['main']['humidity']
-                dt_txt = datetime.fromtimestamp(item['dt'])
                 
-                # Cálculos Agronômicos
+                # Cálculos Agronômicos Precisos
                 es = 0.61078 * math.exp((17.27 * t) / (t + 237.3))
                 ea = es * (u / 100)
                 vpd = max(0, round(es - ea, 2))
-                gda = max(0, (t - t_base) / 8) # GDA simplificado por período de 3h
-                et0_aprox = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
+                
+                # GDA (Graus-Dia) - Método da média simples por período
+                gda_step = max(0, (t - t_base) / 8) # Dividido por 8 pois são blocos de 3h no dia
+                
+                # ETc (Penman-Monteith Simplificado Hargreaves)
+                et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
                 
                 dados.append({
-                    'Data': dt_txt,
+                    'Data': datetime.fromtimestamp(item['dt']),
                     'Temp': t,
                     'Umid': u,
-                    'Chuva': item.get('rain', {}).get('3h', 0),
+                    'Chuva': round(item.get('rain', {}).get('3h', 0), 1),
                     'VPD': vpd,
-                    'GDA': gda,
-                    'ETc': round(et0_aprox * kc, 2),
-                    'Descrição': item['weather'][0]['description']
+                    'GDA': gda_step,
+                    'ETc': round(et0 * kc, 2),
+                    'Desc': item['weather'][0]['description'].title()
                 })
             return pd.DataFrame(dados)
-    except Exception as e:
-        st.error(f"Erro clima: {e}")
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
-def get_radar_regional(lat, lon, key):
-    # Monitora 15km em cruz
+def get_radar_vizinhanca(lat, lon, key):
+    # Monitoramento Cruzado (N, S, L, O) - 15km (~0.13 graus)
     pontos = {
         "Norte (15km)": (lat + 0.13, lon),
         "Sul (15km)": (lat - 0.13, lon),
@@ -200,266 +205,248 @@ def get_radar_regional(lat, lon, key):
     res = []
     for direcao, coords in pontos.items():
         try:
-            url = f"https://api.openweathermap.org/data/2.5/weather?lat={coords[0]}&lon={coords[1]}&appid={key}&units=metric&lang=pt_br"
-            r = requests.get(url).json()
+            r = requests.get(f"https://api.openweathermap.org/data/2.5/weather?lat={coords[0]}&lon={coords[1]}&appid={key}&units=metric").json()
             res.append({
                 "Local": direcao,
                 "Temp": r['main']['temp'],
-                "Condição": r['weather'][0]['description'].title(),
-                "Chuva": "SIM" if "rain" in r else "Não"
+                "Umid": r['main']['humidity'],
+                "Chuva": "SIM" if "rain" in r else "Não",
+                "Clima": r['weather'][0]['main']
             })
         except: pass
     return pd.DataFrame(res)
 
-# --- 4. SIDEBAR INTELIGENTE ---
+# --- 4. SIDEBAR (APENAS LOGIN/API) ---
 with st.sidebar:
-    st.header("⚙️ Painel de Controle")
+    st.image("https://cdn-icons-png.flaticon.com/512/9131/9131546.png", width=80)
+    st.title("Acesso Seguro")
+    st.info("Insira suas chaves de API para desbloquear a inteligência do sistema.")
     
-    # Gerenciamento de Chaves (Secrets ou Manual)
     api_w = st.secrets.get("OPENWEATHER_KEY", st.text_input("OpenWeather Key:", type="password"))
-    api_g = st.secrets.get("GEMINI_KEY", st.text_input("Gemini API Key:", type="password"))
+    api_g = st.secrets.get("GEMINI_KEY", st.text_input("Gemini AI Key:", type="password"))
     
     st.divider()
-    st.markdown("### 📍 Localização")
-    tab_city, tab_gps = st.tabs(["🏙️ Cidade", "🌐 GPS"])
-    
-    if 'lat' not in st.session_state: st.session_state.lat = -13.2000
-    if 'lon' not in st.session_state: st.session_state.lon = -41.4000
-    
-    with tab_city:
-        city_in = st.text_input("Cidade/UF:", placeholder="Ex: Mucugê, BA")
-        if st.button("Buscar") and api_w:
-            nlat, nlon = get_coords(city_in, api_w)
-            if nlat:
-                st.session_state.lat, st.session_state.lon = nlat, nlon
-                st.success("Localizado!")
-                st.rerun()
+    st.caption("Agro-Intel System v40.0")
 
-    with tab_gps:
-        st.session_state.lat = st.number_input("Lat:", value=st.session_state.lat, format="%.4f")
-        st.session_state.lon = st.number_input("Lon:", value=st.session_state.lon, format="%.4f")
-
-    st.divider()
-    # Seletores de Cultura Blindados
-    cultura = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
-    # O seletor de variedade atualiza baseado na cultura
-    variedade = st.selectbox("Variedade:", list(BANCO_MASTER[cultura]['vars'].keys()))
-    fase = st.selectbox("Estágio Atual:", list(BANCO_MASTER[cultura]['fases'].keys()))
-    dt_plantio = st.date_input("Data de Início:", date(2025, 12, 1))
-    
-    st.divider()
-    st.markdown("### 🚚 Logística")
-    carga = st.slider("Carga (kg):", 100, 1000, 400)
-
-# --- 5. DASHBOARD PRINCIPAL ---
-st.markdown(f"""
-<div class="header-style">
-    <h1>🛰️ Agro-Intel Ultimate</h1>
-    <p>Monitoramento Profissional | <b>{cultura} - {variedade}</b></p>
+# --- 5. PAINEL DE CONTROLE PRINCIPAL (NOVO LAYOUT) ---
+st.markdown("""
+<div class="header-main">
+    <h1>🛰️ Agro-Intel Enterprise: Sistema de Suporte à Decisão</h1>
+    <p>Monitoramento Fisiológico e Climático em Tempo Real</p>
 </div>
 """, unsafe_allow_html=True)
 
-if api_w:
-    # Carregamento seguro dos dados
-    crop_data = BANCO_MASTER[cultura]
-    var_data = crop_data['vars'][variedade]
-    phase_data = crop_data['fases'][fase]
+# Container de Controles (Fora da Sidebar)
+with st.container():
+    st.markdown("### ⚙️ Parâmetros da Propriedade")
+    col_geo, col_crop, col_date = st.columns([1.5, 1.5, 1])
     
-    # Previsão
-    df = get_forecast(st.session_state.lat, st.session_state.lon, api_w, var_data['kc'], crop_data['t_base'])
+    # Inicialização de Estado
+    if 'lat' not in st.session_state: st.session_state.lat = -13.2000
+    if 'lon' not in st.session_state: st.session_state.lon = -41.4000
+
+    with col_geo:
+        st.markdown("**📍 Localização**")
+        tab_c, tab_g = st.tabs(["Por Cidade", "Coordenadas"])
+        with tab_c:
+            cidade_busca = st.text_input("Buscar Município:", placeholder="Ex: Ibicoara, BA")
+            if st.button("📍 Localizar") and api_w:
+                nlat, nlon = get_coords(cidade_busca, api_w)
+                if nlat:
+                    st.session_state.lat, st.session_state.lon = nlat, nlon
+                    st.success("Coordenadas Atualizadas!")
+                    st.rerun()
+        with tab_g:
+            c1, c2 = st.columns(2)
+            st.session_state.lat = c1.number_input("Lat:", value=st.session_state.lat, format="%.4f")
+            st.session_state.lon = c2.number_input("Lon:", value=st.session_state.lon, format="%.4f")
+
+    with col_crop:
+        st.markdown("**🌱 Cultura & Genética**")
+        cultura_sel = st.selectbox("Selecione a Cultura:", list(BANCO_MASTER.keys()))
+        var_sel = st.selectbox("Variedade/Cultivar:", list(BANCO_MASTER[cultura_sel]['vars'].keys()))
+        fase_sel = st.selectbox("Estágio Fenológico:", list(BANCO_MASTER[cultura_sel]['fases'].keys()))
+
+    with col_date:
+        st.markdown("**📅 Calendário**")
+        d_plantio = st.date_input("Data de Início:", date(2025, 12, 1))
+
+# --- 6. PROCESSAMENTO E EXIBIÇÃO ---
+if api_w:
+    # Carregamento de Dados
+    crop_db = BANCO_MASTER[cultura_sel]
+    var_db = crop_db['vars'][var_sel]
+    fase_db = crop_db['fases'][fase_sel]
+    pragas_db = crop_db.get('pragas_doencas', {})
+    
+    # Previsão Climática
+    df = get_forecast_full(st.session_state.lat, st.session_state.lon, api_w, crop_db['t_base'], var_db['kc'])
     
     if not df.empty:
-        # Cálculos de KPI
-        hoje_dados = df.iloc[0]
-        dias_campo = (date.today() - dt_plantio).days
-        gda_acum = dias_campo * (df['GDA'].sum() / 5) # Estimativa média diária baseada nos 5 dias
-        gda_meta = var_data['gda_meta']
+        hoje = df.iloc[0]
+        dias_ciclo = (date.today() - d_plantio).days
+        gda_acum = dias_ciclo * (df['GDA'].sum() / 5 * 8) # Projeção GDA
         
-        # Exibição de KPIs
+        # --- MÉTRICAS DE TOPO (KPIs) COM EXPLICAÇÕES ---
+        st.markdown("---")
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("🌡️ Temperatura Agora", f"{hoje_dados['Temp']:.1f}°C")
-        k2.metric("💧 Umidade Relativa", f"{hoje_dados['Umid']}%")
-        k3.metric("💦 ETc (Demanda Hídrica)", f"{hoje_dados['ETc']} mm/3h")
-        k4.metric("📅 Dias de Campo", f"{dias_campo}", f"Meta GDA: {gda_meta}")
-
-        # --- ABAS DO SISTEMA ---
-        tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Chuva", "📡 Radar Regional", "👁️ IA Vision", "🗺️ Mapa", "🚚 Logística"])
-
-        # 1. CONSULTORIA TÉCNICA
-        with tabs[0]:
-            col_left, col_right = st.columns([1, 1])
+        
+        with k1:
+            st.metric("🌡️ Temperatura", f"{hoje['Temp']:.1f}°C")
+            st.markdown(f"<div class='info-text'>Base de crescimento: {crop_db['t_base']}°C</div>", unsafe_allow_html=True)
             
-            with col_left:
-                st.markdown(f"### 🔥 Status de Maturação")
-                
+        with k2:
+            st.metric("💧 VPD (Déficit Pressão)", f"{hoje['VPD']} kPa")
+            status_vpd = "Ideal" if 0.4 <= hoje['VPD'] <= 1.2 else "Estresse"
+            st.markdown(f"<div class='info-text'>Status: <b>{status_vpd}</b>. Indica a capacidade de transpiração da planta.</div>", unsafe_allow_html=True)
+            
+        with k3:
+            st.metric("💦 ETc (Demanda)", f"{hoje['ETc']} mm/dia")
+            st.markdown(f"<div class='info-text'>Kc da fase: {var_db['kc']}. Volume de água a repor via irrigação.</div>", unsafe_allow_html=True)
+            
+        with k4:
+            st.metric("🔥 GDA Acumulado", f"{gda_acum:.0f}", f"Meta: {var_db['gda_meta']}")
+            st.markdown(f"<div class='info-text'>Relógio biológico da planta para prever colheita.</div>", unsafe_allow_html=True)
 
-                progresso = min(1.0, gda_acum / gda_meta)
-                st.progress(progresso)
-                st.caption(f"Acúmulo Térmico: {gda_acum:.0f} GDA (Estimado)")
-                
-                # Matriz de Risco
-                st.markdown("### 🛡️ Matriz de Risco Fitossanitário")
-                risco = "BAIXO"
-                cor_risco = "alert-low"
-                msg_risco = "Condições favoráveis. Manter preventivos."
-                
-                if hoje_dados['Umid'] > 85 and hoje_dados['Temp'] < 22:
-                    risco = "CRÍTICO (Requeima/Mofo)"
-                    cor_risco = "alert-high"
-                    msg_risco = "🚨 ALERTA: Frio + Umidade Alta. Favorável a Oomicetos. Usar Sistêmicos."
-                elif hoje_dados['Umid'] > 80 and hoje_dados['Temp'] > 25:
-                    risco = "ALTO (Bacterioses/Alternária)"
-                    cor_risco = "alert-high"
-                    msg_risco = "🚨 ALERTA: Calor + Umidade. Risco de doenças bacterianas."
-                
-                st.markdown(f"""<div class="{cor_risco}">RISCO: {risco}<br>{msg_risco}</div>""", unsafe_allow_html=True)
-                
+        # --- ABAS DE ANÁLISE ---
+        tabs = st.tabs([
+            "🎓 Consultoria & Manejo", 
+            "🦠 Biblioteca Fitossanitária (Pragas)", 
+            "📊 Clima Detalhado", 
+            "📡 Radar Vizinho", 
+            "👁️ Diagnóstico IA", 
+            "🚚 Logística"
+        ])
 
+        # 1. CONSULTORIA
+        with tabs[0]:
+            c_left, c_right = st.columns([1, 1])
+            with c_left:
+                st.markdown(f"### 🧬 Análise Fisiológica: {fase_sel}")
+                st.info(f"**Descrição da Variedade:** {var_db['info']}")
                 st.markdown(f"""
                 <div class="tech-card">
-                    <h4>🧬 Fisiologia da Fase: {fase}</h4>
-                    <p>{phase_data['fisio']}</p>
+                    <h4>O que acontece na planta agora?</h4>
+                    <p>{fase_db['fisio']}</p>
                     <hr>
-                    <p><b>🔍 Principais Riscos:</b> {phase_data['riscos']}</p>
-                </div>
+                    <p><b>Risco Climático Atual:</b></p>
                 """, unsafe_allow_html=True)
                 
-            with col_right:
+                
+
+                # Lógica de Risco
+                if hoje['Umid'] > 85:
+                    st.error("🚨 ALERTA ALTO: Umidade > 85%. Favorável a fungos e bactérias. Iniciar preventivos.")
+                elif hoje['Temp'] > 30 and "Batata" in cultura_sel:
+                    st.warning("⚠️ ALERTA TÉRMICO: Temp > 30°C. Parada de crescimento (Tuberização inibida).")
+                else:
+                    st.success("✅ Condições Climáticas Favoráveis.")
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with c_right:
+                st.markdown("### 🛠️ Prescrição de Manejo")
                 st.markdown(f"""
                 <div class="tech-card">
-                    <h4>🛠️ Manejo Técnico Recomendado</h4>
-                    <p>{phase_data['desc']}</p>
+                    <h4>🚜 Ações Culturais</h4>
+                    <p>{fase_db['manejo']}</p>
                 </div>
                 <div class="chem-card">
-                    <h4>🧪 Prescrição Química (Sugestão)</h4>
-                    <p>{phase_data['quimica']}</p>
+                    <h4>🧪 Químicos Recomendados</h4>
+                    <p>{fase_db['quim']}</p>
                 </div>
                 <div class="tech-card" style="border-left: 5px solid #ff9800;">
-                    <h4>🌿 Manejo Biológico & Regenerativo</h4>
-                    <p>{phase_data['bio']}</p>
+                    <h4>🌿 Biológicos & Nutrição</h4>
+                    <p>{fase_db['bio']}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-        # 2. CLIMA E CHUVA
+        # 2. BIBLIOTECA FITOSSANITÁRIA (NOVA ABA)
         with tabs[1]:
-            st.markdown("### 🌦️ Previsão Detalhada (5 Dias / 3h)")
+            st.markdown(f"### 🦠 Pragas e Doenças Principais: {cultura_sel}")
+            st.markdown("Guia rápido de identificação e controle para a cultura selecionada.")
             
-            # Gráfico Combinado
+            if pragas_db:
+                for praga, info in pragas_db.items():
+                    with st.container():
+                        st.markdown(f"""
+                        <div class="pest-card">
+                            <div class="pest-title">{praga}</div>
+                            <p><b>🔍 Sintomas:</b> {info['sintomas']}</p>
+                            <p><b>☁️ Condição Favorável:</b> {info['condicao']}</p>
+                            <p><span class="chem-tag">QUÍMICO</span> {info['quimico']}</p>
+                            <p><span class="bio-tag">BIOLÓGICO</span> {info['biologico']}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+            else:
+                st.info("Selecione uma cultura para ver a biblioteca de pragas.")
+
+        # 3. CLIMA
+        with tabs[2]:
+            st.markdown("### 🌧️ Previsão de Chuva e Balanço Hídrico")
             fig = go.Figure()
-            fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva (mm)', marker_color='#2196f3', yaxis='y'))
-            fig.add_trace(go.Scatter(x=df['Data'], y=df['Temp'], name='Temp (°C)', line=dict(color='#ff9800', width=2), yaxis='y2'))
-            
-            fig.update_layout(
-                yaxis=dict(title="Chuva (mm)", side="left"),
-                yaxis2=dict(title="Temp (°C)", side="right", overlaying="y"),
-                hovermode="x unified",
-                template="plotly_white",
-                height=500
-            )
+            fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva (mm)', marker_color='#2196f3'))
+            fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo ETc (mm)', line=dict(color='#d32f2f', width=3)))
+            fig.update_layout(height=400, template="plotly_white", margin=dict(l=20, r=20, t=40, b=20))
             st.plotly_chart(fig, use_container_width=True)
             
-            st.dataframe(df[['Data', 'Temp', 'Umid', 'Chuva', 'VPD', 'Descrição']], use_container_width=True)
+            st.dataframe(df[['Data', 'Temp', 'Umid', 'Chuva', 'VPD', 'GDA', 'Desc']], use_container_width=True)
 
-        # 3. RADAR REGIONAL
-        with tabs[2]:
-            st.markdown("### 📡 Monitoramento de Vizinhança (Raio 15km)")
-            st.info("Monitoramento em tempo real dos pontos cardeais para antecipar frentes de chuva.")
+        # 4. RADAR
+        with tabs[3]:
+            st.markdown("### 📡 Radar de Vizinhança (15km)")
+            st.markdown("Monitoramento dos 4 pontos cardeais para antecipar chuvas localizadas.")
+            df_radar = get_radar_vizinhanca(st.session_state.lat, st.session_state.lon, api_w)
             
-            radar_df = get_radar_regional(st.session_state.lat, st.session_state.lon, api_w)
-            
-            if not radar_df.empty:
-                c_rad = st.columns(4)
-                for i, row in radar_df.iterrows():
-                    cor_bg = "#ffcdd2" if row['Chuva'] == "SIM" else "#c8e6c9"
-                    with c_rad[i]:
+            if not df_radar.empty:
+                cols = st.columns(4)
+                for i, row in df_radar.iterrows():
+                    bg_color = "#fee2e2" if row['Chuva'] == "SIM" else "#dcfce7"
+                    with cols[i]:
                         st.markdown(f"""
-                        <div class="radar-box" style="background-color: {cor_bg};">
+                        <div style="background-color:{bg_color}; padding:15px; border-radius:10px; text-align:center; border:1px solid #ddd;">
                             <h3>{row['Local']}</h3>
                             <h2>{row['Temp']:.1f}°C</h2>
-                            <p>{row['Condição']}</p>
+                            <p>{row['Clima']}</p>
                             <p><b>Chuva: {row['Chuva']}</b></p>
                         </div>
                         """, unsafe_allow_html=True)
-            else:
-                st.warning("Não foi possível carregar os dados do radar. Verifique a conexão.")
 
-        # 4. IA VISION
-        with tabs[3]:
-            st.markdown("### 👁️ Diagnóstico Fitossanitário com Gemini Pro")
-            st.write("Tire uma foto da folha afetada ou do inseto. A IA analisará com base na cultura selecionada.")
+        # 5. IA VISION
+        with tabs[4]:
+            st.markdown("### 👁️ Diagnóstico Inteligente")
+            st.write("Envie uma foto da folha ou fruto para análise instantânea via Gemini Pro.")
             
             if api_g:
-                img_file = st.camera_input("Capturar Imagem")
-                if img_file:
-                    image = Image.open(img_file)
-                    st.image(image, caption="Imagem Capturada", width=300)
-                    
-                    with st.spinner("🔍 Analisando sintomas com Inteligência Artificial..."):
-                        try:
-                            genai.configure(api_key=api_g)
-                            model = genai.GenerativeModel('gemini-1.5-flash')
-                            prompt = f"""
-                            Você é um Engenheiro Agrônomo Sênior. 
-                            Analise esta imagem de {cultura} (Variedade: {variedade}).
-                            Estágio atual: {fase}.
-                            Identifique: 
-                            1. Possíveis pragas ou doenças visíveis.
-                            2. Deficiências nutricionais, se houver.
-                            3. Recomende o controle químico e biológico imediato.
-                            Seja técnico e direto.
-                            """
-                            response = model.generate_content([prompt, image])
-                            st.success("Análise Concluída:")
-                            st.markdown(response.text)
-                        except Exception as e:
-                            st.error(f"Erro na IA: {e}")
+                foto = st.camera_input("Escanear Problema")
+                if foto:
+                    image = Image.open(foto)
+                    st.image(image, width=300)
+                    with st.spinner("Analisando patógenos e deficiências..."):
+                        genai.configure(api_key=api_g)
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        res = model.generate_content([f"Agrônomo Sênior. Analise esta imagem de {cultura_sel} (Var: {var_sel}). Identifique pragas, doenças ou deficiências e recomende tratamento químico e biológico.", image])
+                        st.success("Laudo Gerado:")
+                        st.write(res.text)
             else:
-                st.warning("⚠️ Insira a chave da API Gemini no menu lateral para usar este recurso.")
-
-        # 5. MAPA
-        with tabs[4]:
-            st.markdown("### 🗺️ Visualização de Satélite")
-            m = folium.Map(location=[st.session_state.lat, st.session_state.lon], zoom_start=15)
-            folium.TileLayer(
-                tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                attr='Esri',
-                name='Esri Satélite',
-                overlay=False,
-                control=True
-            ).add_to(m)
-            
-            folium.Marker(
-                [st.session_state.lat, st.session_state.lon],
-                popup="Sede / Ponto de Monitoramento",
-                icon=folium.Icon(color="green", icon="leaf")
-            ).add_to(m)
-            
-            LocateControl().add_to(m)
-            Fullscreen().add_to(m)
-            st_folium(m, width="100%", height=600)
+                st.warning("Chave Gemini não configurada.")
 
         # 6. LOGÍSTICA
         with tabs[5]:
-            st.markdown("### 🚚 Calculadora de Frete e Viagem")
+            st.markdown("### 🚚 Calculadora de Frete")
+            c_l1, c_l2 = st.columns(2)
+            with c_l1:
+                dist = st.number_input("Distância (km):", value=450)
+                cons = st.number_input("Consumo (km/L):", value=10.0)
+                comb = st.number_input("Preço Diesel/Gasolina:", value=6.20)
+                carga = st.slider("Carga Transportada (kg):", 100, 1000, 400)
             
-            c_log1, c_log2 = st.columns(2)
-            with c_log1:
-                distancia = st.number_input("Distância (km):", value=450)
-                consumo = st.number_input("Consumo Veículo (km/L):", value=10.0)
-                preco_comb = st.number_input("Preço Combustível (R$):", value=6.20)
-            
-            with c_log2:
-                custo_total = (distancia / consumo) * preco_comb
-                custo_kg = custo_total / carga
-                ocupacao = (carga / 800) * 100 # Baseado numa Doblò/Strada (800kg)
-                
-                st.metric("Custo Total da Viagem", f"R$ {custo_total:.2f}")
-                st.metric("Custo por Kg Transportado", f"R$ {custo_kg:.3f}")
-                
-                if ocupacao > 100:
-                    st.error(f"⚠️ Sobrecarga! {ocupacao:.1f}% da capacidade estimada (800kg).")
-                else:
-                    st.info(f"Ocupação de Carga: {ocupacao:.1f}%")
+            with c_l2:
+                custo = (dist/cons) * comb
+                st.metric("Custo Total Viagem", f"R$ {custo:.2f}")
+                st.metric("Custo por Kg", f"R$ {custo/carga:.2f}")
+                st.progress(min(1.0, carga/800))
+                st.caption("Ocupação baseada em veículo utilitário leve (800kg)")
 
 else:
-    st.info("👈 Por favor, insira a chave da OpenWeather API no menu lateral para iniciar o sistema.")
+    st.info("👈 Insira sua chave OpenWeather na barra lateral para ativar o sistema.")
