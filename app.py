@@ -17,87 +17,63 @@ st.markdown("""
 <style>
     .main { background-color: #f4f6f9; }
     
-    /* CAPA DO APP (HEADER) - TOPO ABSOLUTO */
+    /* CAPA DO APP (HEADER) */
     .app-cover { 
-        background: linear-gradient(135deg, #0d47a1 0%, #1b5e20 100%); 
+        background: linear-gradient(135deg, #006064 0%, #1b5e20 100%); 
         padding: 30px; 
-        border-radius: 0 0 15px 15px; /* Arredondado apenas em baixo */
+        border-radius: 0 0 15px 15px; 
         color: white; 
-        margin-top: -60px; /* Força o topo ignorando padding padrão do Streamlit */
-        margin-left: -5rem; /* Expande para laterais */
+        margin-top: -60px; 
+        margin-left: -5rem; 
         margin-right: -5rem;
         padding-left: 5rem;
         padding-right: 5rem;
-        margin-bottom: 30px; 
+        margin-bottom: 0px; /* Colado na barra climática */
         box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-    .cover-title { 
-        font-size: 3em; 
-        font-weight: 900; 
-        margin: 0; 
-        letter-spacing: -1px;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    .cover-subtitle { 
-        font-size: 1.3em; 
-        font-weight: 300; 
-        opacity: 0.95; 
-        margin-bottom: 25px; 
-        font-style: italic;
-        border-bottom: 1px solid rgba(255,255,255,0.2);
-        padding-bottom: 15px;
-        display: inline-block;
-    }
-    .data-grid {
+    .cover-title { font-size: 3em; font-weight: 900; margin: 0; letter-spacing: -1px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+    .cover-subtitle { font-size: 1.3em; font-weight: 300; opacity: 0.95; margin-bottom: 25px; font-style: italic; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; display: inline-block; }
+    .data-grid { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 15px; }
+    .info-tag { background: rgba(255,255,255,0.15); padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 1em; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2); display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+    /* BARRA CLIMÁTICA HORIZONTAL (NOVIDADE) */
+    .climate-strip {
+        background: white;
+        margin-left: -5rem;
+        margin-right: -5rem;
+        padding: 15px 5rem;
         display: flex;
-        gap: 20px;
-        flex-wrap: wrap;
-        margin-top: 15px;
-    }
-    .info-tag { 
-        background: rgba(255,255,255,0.15); 
-        padding: 10px 20px; 
-        border-radius: 10px; 
-        font-weight: 600; 
-        font-size: 1em; 
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(255,255,255,0.2);
-        display: flex;
+        justify-content: space-around;
         align-items: center;
-        gap: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-bottom: 1px solid #e0e0e0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        margin-bottom: 25px;
     }
+    .climate-item { text-align: center; border-right: 1px solid #eee; flex: 1; }
+    .climate-item:last-child { border-right: none; }
+    .climate-label { font-size: 0.85em; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+    .climate-value { font-size: 1.4em; font-weight: 800; color: #2e7d32; }
 
-    /* PAINEL DE CONTROLE */
-    .control-panel {
-        background-color: white;
-        padding: 25px;
-        border-radius: 15px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        margin-bottom: 30px;
-    }
-
-    /* CARDS TÉCNICOS */
+    /* CARDS TÉCNICOS PROFISSIONAIS */
     .tech-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #1565c0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .chem-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #c62828; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .bio-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #2e7d32; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    
+    .agro-explanation { font-size: 0.9em; color: #555; margin-top: 8px; border-left: 2px solid #ddd; padding-left: 10px; font-style: italic; }
+    .active-ingredient { color: #d32f2f; font-weight: 700; }
     
     /* ALERTA */
     .alert-box { padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; text-align: center; font-size: 1.1em; }
     .high-risk { background-color: #ffebee; color: #b71c1c; border: 1px solid #ef5350; }
     .low-risk { background-color: #e8f5e9; color: #1b5e20; border: 1px solid #66bb6a; }
-
-    /* TEXTOS DE APOIO */
-    .agro-explanation { font-size: 0.85em; color: #616161; margin-top: 5px; font-style: italic; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS AGRONÔMICO (MANTIDO INTACTO) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO (MANTIDO) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
-        "t_base": 7,
+        "t_base": 7, "t_teto": 29, # Adicionado Teto Térmico para cálculo preciso
         "vars": {
             "Orchestra": {"kc": 1.15, "gda_meta": 1600, "info": "Pele lisa, polpa amarela. Alta exigência de K e Boro."},
             "Cupido": {"kc": 1.10, "gda_meta": 1400, "info": "Ciclo ultra-curto (90 dias). Sensível a Metribuzin."},
@@ -107,48 +83,48 @@ BANCO_MASTER = {
         "fases": {
             "Emergência (0-20 dias)": {
                 "desc": "Brotamento e Enraizamento.", 
-                "fisio": "Dreno de reservas da semente. Baixa taxa fotossintética.", 
+                "fisio": "A planta drena reservas do tubérculo-mãe. Raízes absorventes ainda são frágeis.", 
                 "manejo": "Manter solo friável. Evitar crostas superficiais.", 
                 "riscos": "Rhizoctonia (Canela Preta), Pectobacterium.",
-                "quim": "**Azoxistrobina:** Aplicação no sulco. Inibe respiração mitocondrial de fungos.\n**Tiametoxam:** Proteção inicial contra vetores.", 
-                "bio": "**Trichoderma harzianum:** Colonização da rizosfera."
+                "quim": "**Azoxistrobina (Grupo 11):** Inibidor da respiração mitocondrial (QoI). Aplicação no sulco protege estolões.\n**Tiametoxam (Grupo 4A):** Neonicotinoide sistêmico via xilema para proteção inicial contra vetores.", 
+                "bio": "**Trichoderma harzianum:** Coloniza a rizosfera, criando uma barreira física e enzimática contra patógenos de solo."
             },
             "Vegetativo (20-35 dias)": {
                 "desc": "Expansão de Hastes.", 
-                "fisio": "Alta demanda de Nitrogênio e Magnésio.", 
-                "manejo": "Amontoa técnica.", 
+                "fisio": "Alta taxa fotossintética. Demanda crítica de Nitrogênio e Magnésio.", 
+                "manejo": "Amontoa técnica para estimular tuberização e proteger contra traça.", 
                 "riscos": "Vaquinha (Diabrotica), Minadora.",
-                "quim": "**Mancozeb:** Multissítio de contato.\n**Clorotalonil:** Alta aderência.", 
-                "bio": "**Beauveria bassiana:** Controle de insetos mastigadores."
+                "quim": "**Mancozeb (Grupo M03):** Multissítio de contato. Essencial para manejo de resistência (anti-resiliente).\n**Clorotalonil (Grupo M05):** Alta aderência e tenacidade à chuva.", 
+                "bio": "**Beauveria bassiana:** Fungo entomopatogênico que infecta insetos mastigadores via contato."
             },
             "Tuberização (35-50 dias)": {
                 "desc": "Início da Formação (Ganchos).", 
-                "fisio": "Inversão hormonal crítica. Estresse causa abortamento.", 
-                "manejo": "Irrigação de precisão.", 
+                "fisio": "Inversão hormonal (Giberelina cai, Citocinina sobe). Estresse hídrico agora causa 'bonecos' ou abortamento.", 
+                "manejo": "Irrigação de precisão (evitar oscilações).", 
                 "riscos": "Requeima (Phytophthora), Sarna.",
-                "quim": "**Mandipropamida (Revus):** Específico para Oomicetos.\n**Metalaxil-M:** Sistêmico curativo.", 
-                "bio": "**Bacillus subtilis:** Inibe crescimento de bactérias."
+                "quim": "**Mandipropamida (Grupo 40):** Inibe a síntese de celulose nos Oomicetos. Alta afinidade com a cera.\n**Metalaxil-M (Grupo 4):** Sistêmico curativo (penetração rápida).", 
+                "bio": "**Bacillus subtilis:** Produz iturinas e surfactinas que rompem a membrana de bactérias fitopatogênicas."
             },
             "Enchimento (50-80 dias)": {
                 "desc": "Crescimento dos Tubérculos.", 
-                "fisio": "Translocação intensa de açúcares. Dreno de Potássio.", 
-                "manejo": "Sanidade foliar total.", 
+                "fisio": "Translocação intensa de açúcares. Dreno massivo de Potássio.", 
+                "manejo": "Sanidade foliar total (Manter IAF).", 
                 "riscos": "Mosca Branca, Traça, Pinta Preta.",
-                "quim": "**Ciantraniliprole:** Paralisa musculatura de insetos.\n**Espirotesifeno:** Inibe lipídios (Ácaros).", 
-                "bio": "**Extrato de Algas:** Efeito stay-green."
+                "quim": "**Ciantraniliprole (Grupo 28):** Modulador de canais de rianodina. Paralisação muscular rápida.\n**Espirotesifeno (Grupo 23):** Inibe biossíntese de lipídios em ácaros/moscas.", 
+                "bio": "**Extrato de Algas (Ascophyllum):** Rico em citocininas e betaínas para reduzir estresse térmico (efeito stay-green)."
             },
             "Maturação (80+ dias)": {
                 "desc": "Senescência e Cura.", 
-                "fisio": "Suberização da pele.", 
-                "manejo": "Dessecação e suspensão da irrigação.", 
+                "fisio": "Suberização da pele (casca). Conversão de sacarose em amido.", 
+                "manejo": "Dessecação para uniformizar colheita.", 
                 "riscos": "Podridão mole, Larva Alfinete.",
-                "quim": "**Diquat:** Dessecante de contato.\n**Carfentrazona:** Opção para manejo de folhas largas.", 
-                "bio": "**Suspender Nitrogênio:** Para evitar pele fina."
+                "quim": "**Diquat (Grupo 22):** Desviador de elétrons (Fotossistema I). Ação de contato rápida.\n**Carfentrazona (Grupo 14):** Inibidor da PPO.", 
+                "bio": "**Suspender Nitrogênio:** O excesso atrasa a pele e reduz qualidade pós-colheita."
             }
         }
     },
     "Tomate (Solanum lycopersicum)": {
-        "t_base": 10,
+        "t_base": 10, "t_teto": 32,
         "vars": {
             "Italiano": {"kc": 1.2, "gda_meta": 1600, "info": "Fruto alongado. Exige Cálcio."},
             "Grape": {"kc": 1.1, "gda_meta": 1450, "info": "Alto Brix. Sensível a rachaduras."}
@@ -159,37 +135,37 @@ BANCO_MASTER = {
                 "fisio": "Formação de estrutura.", 
                 "manejo": "Desbrota lateral.", 
                 "riscos": "Tripes, Geminivírus.",
-                "quim": "**Imidacloprido:** Sistêmico no gotejo.", 
-                "bio": "**Micorrizas:** Absorção de P."
+                "quim": "**Imidacloprido (Grupo 4A):** Sistêmico no gotejo.", 
+                "bio": "**Micorrizas:** Aumenta exploração radicular."
             },
             "Florada": {
                 "desc": "Emissão de Cachos.", 
-                "fisio": "Viabilidade do pólen.", 
+                "fisio": "Viabilidade do pólen (sensível a calor).", 
                 "manejo": "Vibração ou Hormônio.", 
                 "riscos": "Oídio, Botrytis.",
-                "quim": "**Azoxistrobina:** Preventivo amplo espectro.", 
-                "bio": "**Cálcio + Boro:** Pegamento."
+                "quim": "**Azoxistrobina (Grupo 11):** Preventivo e anti-esporulante.", 
+                "bio": "**Cálcio + Boro:** Essencial para tubo polínico."
             },
             "Frutificação": {
                 "desc": "Engorda.", 
-                "fisio": "Dreno de Potássio.", 
-                "manejo": "Condução.", 
+                "fisio": "Dreno de Potássio e Água.", 
+                "manejo": "Condução vertical.", 
                 "riscos": "Traça (Tuta), Requeima.",
-                "quim": "**Clorfenapir:** Ação de choque (Tuta).", 
-                "bio": "**Bacillus thuringiensis:** Lagartas."
+                "quim": "**Clorfenapir (Grupo 13):** Desacoplador da fosforilação oxidativa (Choque).", 
+                "bio": "**Bacillus thuringiensis:** Cristal proteico tóxico para lagartas."
             },
             "Colheita": {
                 "desc": "Maturação.", 
-                "fisio": "Síntese de Licopeno.", 
+                "fisio": "Síntese de Licopeno (Cor).", 
                 "manejo": "Colheita delicada.", 
                 "riscos": "Pós-colheita.",
-                "quim": "**Cobre:** Bactericida preventivo.", 
-                "bio": "**Óleo de Laranja:** Dessecante."
+                "quim": "**Cobre:** Bactericida multissítio.", 
+                "bio": "**Óleo de Laranja:** Dessecante de contato."
             }
         }
     },
     "Café (Coffea arabica)": {
-        "t_base": 10,
+        "t_base": 10, "t_teto": 30,
         "vars": {
             "Catuaí": {"kc": 1.1, "gda_meta": 3000, "info": "Qualidade bebida. Sensível à Ferrugem."},
             "Arara": {"kc": 1.2, "gda_meta": 2900, "info": "Resistente à Ferrugem."}
@@ -197,180 +173,75 @@ BANCO_MASTER = {
         "fases": {
             "Florada": {
                 "desc": "Antese.", 
-                "fisio": "Demanda energética.", 
-                "manejo": "Não aplicar inseticidas.", 
+                "fisio": "Alta demanda energética. Antese sincronizada pela chuva.", 
+                "manejo": "Não aplicar inseticidas (Abelhas).", 
                 "riscos": "Phoma, Mancha Aureolada.",
-                "quim": "**Boscalida:** Controle de Phoma.", 
-                "bio": "**Extrato de Algas:** Anti-estresse."
+                "quim": "**Boscalida (Grupo 7):** Carboxamida específica para Phoma.", 
+                "bio": "**Extrato de Algas:** Redução de abortamento."
             },
             "Chumbinho": {
                 "desc": "Expansão Inicial.", 
-                "fisio": "Divisão celular.", 
-                "manejo": "Adubação N.", 
+                "fisio": "Intensa divisão celular.", 
+                "manejo": "Adubação Nitrogenada.", 
                 "riscos": "Cercospora, Ferrugem.",
-                "quim": "**Ciproconazol:** Triazol curativo.", 
-                "bio": "**Cobre quelatado:** Parede celular."
+                "quim": "**Ciproconazol (Grupo 3):** Triazol com efeito sistêmico rápido.", 
+                "bio": "**Cobre quelatado:** Fortalecimento da cutícula."
             },
             "Granação": {
                 "desc": "Enchimento.", 
-                "fisio": "Deposição de massa.", 
-                "manejo": "Adubação K.", 
+                "fisio": "Deposição de matéria seca.", 
+                "manejo": "Adubação Potássica.", 
                 "riscos": "Broca-do-Café.",
-                "quim": "**Ciantraniliprole:** Controle de Broca.", 
-                "bio": "**Beauveria bassiana:** Biológico."
+                "quim": "**Ciantraniliprole:** Sistêmico via xilema contra broca.", 
+                "bio": "**Beauveria bassiana:** Infecção de adultos da broca."
             },
             "Maturação": {
                 "desc": "Cereja.", 
-                "fisio": "Açúcares.", 
+                "fisio": "Açúcares redutores.", 
                 "manejo": "Arruação.", 
                 "riscos": "Queda de frutos.",
-                "quim": "**Respeitar Carência.**", 
-                "bio": "**Potássio Foliar.**"
+                "quim": "**Respeitar Carência Rigorosa.**", 
+                "bio": "**Potássio Foliar:** Uniformização."
             }
         }
     },
     "Mirtilo (Blueberry)": {
-        "t_base": 7,
+        "t_base": 7, "t_teto": 28,
         "vars": {"Emerald": {"kc": 0.95, "gda_meta": 1800, "info": "pH 4.5. Vigorosa."}, "Biloxi": {"kc": 0.90, "gda_meta": 1900, "info": "Baixo frio. Rústica."}},
         "fases": {
-            "Brotação": {
-                "desc": "Fluxo Vegetativo.", 
-                "fisio": "Mobilização de reservas.", 
-                "manejo": "Correção de pH.", 
-                "riscos": "Cochonilhas.", 
-                "quim": "**Óleo Mineral:** Controle físico.", 
-                "bio": "**Bokashi:** Microbiota ácida."
-            },
-            "Florada": {
-                "desc": "Polinização.", 
-                "fisio": "Sensível a abortamento.", 
-                "manejo": "Abelhas.", 
-                "riscos": "Botrytis (Mofo).", 
-                "quim": "**Fludioxonil (Switch):** Padrão Botrytis.", 
-                "bio": "**Aminoácidos:** Viabilidade pólen."
-            },
-            "Fruto Verde": {
-                "desc": "Crescimento.", 
-                "fisio": "Divisão celular.", 
-                "manejo": "Nutrição K.", 
-                "riscos": "Antracnose.", 
-                "quim": "**Difenoconazol:** Triazol.", 
-                "bio": "**Ácidos Fúlvicos.**"
-            },
-            "Maturação": {
-                "desc": "Mudança de Cor.", 
-                "fisio": "Antocianinas.", 
-                "manejo": "Colheita.", 
-                "riscos": "Drosófila (SWD).", 
-                "quim": "**Espinosade:** Baixa carência.", 
-                "bio": "**Iscas Atrativas.**"
-            }
+            "Brotação": {"desc": "Fluxo Vegetativo.", "fisio": "Mobilização de reservas.", "manejo": "Correção de pH.", "riscos": "Cochonilhas.", "quim": "**Óleo Mineral:** Asfixia mecânica de cochonilhas.", "bio": "**Bokashi:** Estímulo à microbiota acidófila."},
+            "Florada": {"desc": "Polinização.", "fisio": "Flor invertida protege pólen, mas requer vibração.", "manejo": "Abelhas (Bombus).", "riscos": "Botrytis (Mofo).", "quim": "**Fludioxonil (Grupo 12):** Inibidor da transdução de sinal (Switch).", "bio": "**Aminoácidos:** Viabilidade do grão de pólen."},
+            "Fruto Verde": {"desc": "Crescimento.", "fisio": "Divisão celular.", "manejo": "Nutrição K.", "riscos": "Antracnose.", "quim": "**Difenoconazol:** Triazol de amplo espectro.", "bio": "**Ácidos Fúlvicos:** Complexação de cátions."},
+            "Maturação": {"desc": "Mudança de Cor.", "fisio": "Síntese de Antocianinas.", "manejo": "Colheita.", "riscos": "Drosófila (SWD).", "quim": "**Espinosade (Grupo 5):** Modulador alostérico. Baixa carência.", "bio": "**Iscas Atrativas:** Monitoramento populacional."}
         }
     },
     "Framboesa (Rubus idaeus)": {
-        "t_base": 7,
+        "t_base": 7, "t_teto": 26,
         "vars": {"Heritage": {"kc": 1.1, "gda_meta": 1300, "info": "Remontante. Vermelha."}, "Golden": {"kc": 1.05, "gda_meta": 1250, "info": "Amarela. Suave."}},
         "fases": {
-            "Brotação": {
-                "desc": "Emissão de Hastes.", 
-                "fisio": "Crescimento rápido.", 
-                "manejo": "Seleção de hastes.", 
-                "riscos": "Ácaro Rajado.", 
-                "quim": "**Abamectina:** Acaricida.", 
-                "bio": "**Enxofre:** Repelência."
-            },
-            "Florada": {
-                "desc": "Botões Florais.", 
-                "fisio": "Sensível à chuva.", 
-                "manejo": "Cobertura (Túnel).", 
-                "riscos": "Podridão Floral.", 
-                "quim": "**Iprodiona:** Preventivo.", 
-                "bio": "**Cálcio Boro:** Firmeza."
-            },
-            "Frutificação": {
-                "desc": "Formação de Bagas.", 
-                "fisio": "Fruto agregado.", 
-                "manejo": "Colheita frequente.", 
-                "riscos": "Ferrugem.", 
-                "quim": "**Azoxistrobina:** Sem manchar fruto.", 
-                "bio": "**Silício:** Barreira física."
-            },
-            "Maturação": {
-                "desc": "Colheita.", 
-                "fisio": "Perecível.", 
-                "manejo": "Refrigeração.", 
-                "riscos": "Fungos pós-colheita.", 
-                "quim": "**Não aplicar químicos sistêmicos.**", 
-                "bio": "**Quitosana:** Filme protetor."
-            }
+            "Brotação": {"desc": "Emissão de Hastes.", "fisio": "Crescimento vegetativo explosivo.", "manejo": "Seleção de hastes.", "riscos": "Ácaro Rajado.", "quim": "**Abamectina (Grupo 6):** Ativador do canal de cloro.", "bio": "**Enxofre:** Ação desalojante e fungistática."},
+            "Florada": {"desc": "Botões Florais.", "fisio": "Alta sensibilidade à umidade.", "manejo": "Cobertura (Túnel).", "riscos": "Podridão Floral.", "quim": "**Iprodiona (Grupo 2):** Inibidor da transdução de sinal.", "bio": "**Cálcio Boro:** Firmeza do receptáculo floral."},
+            "Frutificação": {"desc": "Formação de Bagas.", "fisio": "Fruto agregado (drupeletes).", "manejo": "Colheita frequente.", "riscos": "Ferrugem.", "quim": "**Azoxistrobina:** Preventivo sem resíduo visível.", "bio": "**Silício:** Barreira física na epiderme."},
+            "Maturação": {"desc": "Colheita.", "fisio": "Fruto climatério, alta respiração.", "manejo": "Refrigeração imediata.", "riscos": "Fungos pós-colheita.", "quim": "**Não aplicar químicos sistêmicos.**", "bio": "**Quitosana:** Filme protetor comestível."}
         }
     },
     "Amora (Rubus spp.)": {
-        "t_base": 7,
+        "t_base": 7, "t_teto": 28,
         "vars": {"Tupy": {"kc": 1.0, "gda_meta": 1500, "info": "Preta. Exige poda."}, "Xingu": {"kc": 1.05, "gda_meta": 1400, "info": "Sem espinhos."}},
         "fases": {
-            "Brotação": {
-                "desc": "Quebra de Dormência.", 
-                "fisio": "Ativação de gemas.", 
-                "manejo": "Cianamida (se necessário).", 
-                "riscos": "Ferrugem da Amora.", 
-                "quim": "**Cobre:** Limpeza.", 
-                "bio": "**Calda Sulfocálcica.**"
-            },
-            "Florada": {
-                "desc": "Cachos Florais.", 
-                "fisio": "Polinização.", 
-                "manejo": "Nutrição Boro.", 
-                "riscos": "Botrytis.", 
-                "quim": "**Captana:** Protetor.", 
-                "bio": "**Extrato de Alho.**"
-            },
-            "Frutificação": {
-                "desc": "Enchimento.", 
-                "fisio": "Acúmulo de água.", 
-                "manejo": "Irrigação.", 
-                "riscos": "Ácaros.", 
-                "quim": "**Tebuconazol:** Ferrugem.", 
-                "bio": "**Metarhizium.**"
-            },
-            "Maturação": {
-                "desc": "Preto Brilhante.", 
-                "fisio": "Máximo açúcar.", 
-                "manejo": "Colheita.", 
-                "riscos": "Drosófila.", 
-                "quim": "**Espinosade.**", 
-                "bio": "**Armadilhas massais.**"
-            }
+            "Brotação": {"desc": "Quebra de Dormência.", "fisio": "Ativação metabólica de gemas.", "manejo": "Cianamida (se necessário).", "riscos": "Ferrugem da Amora.", "quim": "**Cobre:** Limpeza de ramos pós-poda.", "bio": "**Calda Sulfocálcica:** Tratamento de inverno."},
+            "Florada": {"desc": "Cachos Florais.", "fisio": "Polinização cruzada.", "manejo": "Nutrição Boro.", "riscos": "Botrytis.", "quim": "**Captana (Grupo M04):** Protetor multissítio.", "bio": "**Extrato de Alho:** Repelência."},
+            "Frutificação": {"desc": "Enchimento.", "fisio": "Acúmulo de água nas drupas.", "manejo": "Irrigação constante.", "riscos": "Ácaros.", "quim": "**Tebuconazol:** Triazol sistêmico.", "bio": "**Metarhizium:** Controle biológico de tripes."},
+            "Maturação": {"desc": "Preto Brilhante.", "fisio": "Máximo teor de açúcar.", "manejo": "Colheita.", "riscos": "Drosófila.", "quim": "**Espinosade:** Controle de choque.", "bio": "**Armadilhas massais.**"}
         }
     },
     "Morango (Fragaria x ananassa)": {
-        "t_base": 7,
+        "t_base": 7, "t_teto": 26,
         "vars": {"San Andreas": {"kc": 0.85, "gda_meta": 1200, "info": "Dia neutro. Ácaros."}, "Albion": {"kc": 0.85, "gda_meta": 1250, "info": "Sabor. Oídio."}},
         "fases": {
-            "Vegetativo": {
-                "desc": "Coroa.", 
-                "fisio": "Folhas.", 
-                "manejo": "Limpeza.", 
-                "riscos": "Oídio, Ácaro.", 
-                "quim": "**Enxofre, Abamectina.**", 
-                "bio": "**Silício.**"
-            },
-            "Florada": {
-                "desc": "Hastes.", 
-                "fisio": "Polinização.", 
-                "manejo": "Ventilação.", 
-                "riscos": "Mofo Cinzento.", 
-                "quim": "**Ciprodinil.**", 
-                "bio": "**Clonostachys rosea.**"
-            },
-            "Colheita": {
-                "desc": "Fruto.", 
-                "fisio": "Açúcares.", 
-                "manejo": "Diário.", 
-                "riscos": "Podridão.", 
-                "quim": "**Etoxazol.**", 
-                "bio": "**Neoseiulus.**"
-            }
+            "Vegetativo": {"desc": "Coroa.", "fisio": "Emissão de novas folhas.", "manejo": "Limpeza sanitária.", "riscos": "Oídio, Ácaro.", "quim": "**Enxofre, Abamectina.**", "bio": "**Silício Foliar.**"},
+            "Florada": {"desc": "Hastes.", "fisio": "Polinização (Fruto verdadeiro é o aquênio).", "manejo": "Ventilação.", "riscos": "Mofo Cinzento.", "quim": "**Ciprodinil:** Sistêmico (Grupo 9).", "bio": "**Clonostachys rosea:** Antagonista."},
+            "Colheita": {"desc": "Fruto.", "fisio": "Açúcares e Aromas.", "manejo": "Diário.", "riscos": "Podridão.", "quim": "**Etoxazol (Grupo 10B):** Ovicida de ácaros.", "bio": "**Neoseiulus:** Ácaro predador."}
         }
     }
 }
@@ -383,7 +254,20 @@ def get_coords(city, key):
         if r: return r[0]['lat'], r[0]['lon']
     except: return None, None
 
-def get_forecast(lat, lon, key, kc, t_base):
+def calcular_gda_preciso(t_min, t_max, t_base, t_teto):
+    # Método do Seno Simples ou Triangulação (Simplificado aqui pela média cortada)
+    # Se a temperatura média estiver abaixo da base, GDA é 0.
+    # Se estiver acima do teto, limita-se ao teto (estresse térmico não gera crescimento linear).
+    t_media = (t_min + t_max) / 2
+    if t_media < t_base:
+        return 0
+    elif t_media > t_teto:
+        # Penalização por calor excessivo (Opcional, aqui mantemos o platô)
+        return t_teto - t_base
+    else:
+        return t_media - t_base
+
+def get_forecast(lat, lon, key, kc, t_base, t_teto=30):
     try:
         url = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={key}&units=metric&lang=pt_br"
         r = requests.get(url).json()
@@ -391,12 +275,17 @@ def get_forecast(lat, lon, key, kc, t_base):
         if 'list' in r:
             for item in r['list']:
                 t = item['main']['temp']
+                t_min = item['main']['temp_min']
+                t_max = item['main']['temp_max']
                 u = item['main']['humidity']
                 
                 es = 0.61078 * math.exp((17.27 * t) / (t + 237.3))
                 ea = es * (u / 100)
                 vpd = max(0, round(es - ea, 2))
-                gda = max(0, (t - t_base) / 8) 
+                
+                # CÁLCULO GDA REGULADO (Por bloco de 3h, divide por 8 para ter a fração do dia)
+                gda_bloco = calcular_gda_preciso(t_min, t_max, t_base, t_teto) / 8
+                
                 et0 = 0.0023 * (t + 17.8) * (t ** 0.5) * 0.408
                 
                 dados.append({
@@ -405,7 +294,7 @@ def get_forecast(lat, lon, key, kc, t_base):
                     'Umid': u,
                     'Chuva': item.get('rain', {}).get('3h', 0),
                     'VPD': vpd,
-                    'GDA': gda,
+                    'GDA': gda_bloco,
                     'ETc': round(et0 * kc, 2),
                     'Descrição': item['weather'][0]['description'].title()
                 })
@@ -433,20 +322,23 @@ with st.sidebar:
     api_w = st.secrets.get("OPENWEATHER_KEY", st.text_input("OpenWeather Key:", type="password"))
     api_g = st.secrets.get("GEMINI_KEY", st.text_input("Gemini API Key:", type="password"))
     st.divider()
-    st.caption("Agro-Intel Enterprise v46.0")
+    st.caption("Agro-Intel Enterprise v47.0")
 
 # --- 5. LÓGICA DE INICIALIZAÇÃO ---
 if 'lat' not in st.session_state: st.session_state.lat = -13.2000
 if 'lon' not in st.session_state: st.session_state.lon = -41.4000
 
 # ---------------------------------------------------------
-#  ESTRUTURA DA PÁGINA (CAPA NO TOPO -> INPUTS -> RESULTADOS)
+#  ESTRUTURA DA PÁGINA (CAPA -> BARRA CLIMÁTICA -> PAINEL -> DADOS)
 # ---------------------------------------------------------
 
-# 1. ESPAÇO RESERVADO PARA A CAPA (NO TOPO ABSOLUTO)
+# 1. ESPAÇO RESERVADO PARA A CAPA
 header_placeholder = st.empty()
 
-# 2. PAINEL DE CONTROLE (ABAIXO DA CAPA)
+# 2. BARRA CLIMÁTICA HORIZONTAL (Placeholder)
+climate_strip_placeholder = st.empty()
+
+# 3. PAINEL DE CONTROLE
 with st.container():
     st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
     st.markdown("### ⚙️ Painel de Operação")
@@ -476,21 +368,23 @@ with st.container():
         dt_inicio = st.date_input("Data de Início/Plantio:", date(2025, 12, 1))
     st.markdown("</div>", unsafe_allow_html=True)
 
-# 3. LÓGICA DE PROCESSAMENTO E PREENCHIMENTO
+# 4. LÓGICA DE PROCESSAMENTO
 if api_w:
     # Dados Seguros
     c_db = BANCO_MASTER[cultura]
     v_db = c_db['vars'][variedade]
     f_db = c_db['fases'][fase]
     
-    df = get_forecast(st.session_state.lat, st.session_state.lon, api_w, v_db['kc'], c_db['t_base'])
+    # Previsão (Passando teto térmico agora)
+    t_teto_crop = c_db.get('t_teto', 30) # Padrão 30 se não houver
+    df = get_forecast(st.session_state.lat, st.session_state.lon, api_w, v_db['kc'], c_db['t_base'], t_teto_crop)
     
     if not df.empty:
         hoje = df.iloc[0]
         dias = (date.today() - dt_inicio).days
         gda_acum = dias * (df['GDA'].sum() / 5 * 8)
         
-        # --- AQUI ESTÁ A MÁGICA: PREENCHE A CAPA NO TOPO AGORA ---
+        # --- A. PREENCHER CAPA ---
         with header_placeholder.container():
             st.markdown(f"""
             <div class="app-cover">
@@ -500,24 +394,42 @@ if api_w:
                     <div class="info-tag">🌱 {cultura}</div>
                     <div class="info-tag">🧬 {variedade}</div>
                     <div class="info-tag">📅 {dias} dias de campo</div>
-                    <div class="info-tag">🔥 {gda_acum:.0f} GDA Acumulado</div>
+                    <div class="info-tag">🔥 {gda_acum:.0f} GDA (Calibrado)</div>
                 </div>
                 <div style="margin-top: 20px; font-size: 0.95em; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
-                    ℹ️ <b>Perfil Genético:</b> {v_db['info']}
+                    ℹ️ <b>Genética:</b> {v_db['info']}
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        
-        # --- RESULTADOS ABAIXO DO PAINEL DE CONTROLE ---
-        
-        # Métricas Compactas
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("🌡️ Temperatura", f"{hoje['Temp']:.1f}°C")
-        m2.metric("💧 Umidade", f"{hoje['Umid']}%")
-        m3.metric("🌧️ Chuva (3h)", f"{hoje['Chuva']} mm")
-        m4.metric("💦 Demanda ETc", f"{hoje['ETc']} mm")
 
-        # Abas de Análise
+        # --- B. PREENCHER BARRA CLIMÁTICA HORIZONTAL ---
+        with climate_strip_placeholder.container():
+            st.markdown(f"""
+            <div class="climate-strip">
+                <div class="climate-item">
+                    <div class="climate-label">TEMPERATURA</div>
+                    <div class="climate-value">{hoje['Temp']:.1f}°C</div>
+                </div>
+                <div class="climate-item">
+                    <div class="climate-label">UMIDADE</div>
+                    <div class="climate-value">{hoje['Umid']}%</div>
+                </div>
+                <div class="climate-item">
+                    <div class="climate-label">CHUVA (3H)</div>
+                    <div class="climate-value">{hoje['Chuva']} mm</div>
+                </div>
+                <div class="climate-item">
+                    <div class="climate-label">DEMANDA (ETc)</div>
+                    <div class="climate-value">{hoje['ETc']} mm</div>
+                </div>
+                 <div class="climate-item">
+                    <div class="climate-label">VPD</div>
+                    <div class="climate-value">{hoje['VPD']} kPa</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # --- C. ABAS DE ANÁLISE ---
         tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Água", "📡 Radar", "👁️ IA Vision", "🗺️ Mapa", "🚚 Logística"])
 
         # ABA 1: CONSULTORIA TÉCNICA
@@ -525,7 +437,9 @@ if api_w:
             st.markdown(f"### Diagnóstico Fenológico: {fase}")
             
             
-            st.progress(min(1.0, gda_acum/v_db['gda_meta']))
+            progresso = min(1.0, gda_acum/v_db['gda_meta'])
+            st.progress(progresso)
+            st.caption(f"Ciclo Térmico: {int(progresso*100)}% concluído")
             
             # Alerta de Risco com Lógica
             if hoje['Umid'] > 85:
@@ -537,7 +451,6 @@ if api_w:
 
             col_esq, col_dir = st.columns(2)
             with col_esq:
-                # Uso de .get() para segurança
                 riscos_txt = f_db.get('riscos', 'Monitoramento Padrão')
                 fisio_txt = f_db.get('fisio', 'Crescimento normal.')
                 bio_txt = f_db.get('bio', 'Manter equilíbrio de solo.')
@@ -572,7 +485,7 @@ if api_w:
                 <div class="chem-card">
                     <h4>🧪 Controle Químico Profissional</h4>
                     <p>{quim_txt}</p>
-                    <p class="agro-explanation">Princípios ativos sugeridos com base no alvo biológico.</p>
+                    <p class="agro-explanation">Princípios ativos sugeridos com base no alvo biológico e grupo químico.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
