@@ -17,50 +17,66 @@ st.markdown("""
 <style>
     .main { background-color: #f4f6f9; }
     
-    /* CAPA DO APP (HEADER) - ESTILO PREMIUM */
+    /* CAPA DO APP (HEADER) - TOPO ABSOLUTO */
     .app-cover { 
         background: linear-gradient(135deg, #0d47a1 0%, #1b5e20 100%); 
         padding: 30px; 
-        border-radius: 15px; 
+        border-radius: 0 0 15px 15px; /* Arredondado apenas em baixo */
         color: white; 
-        margin-bottom: 25px; 
+        margin-top: -60px; /* Força o topo ignorando padding padrão do Streamlit */
+        margin-left: -5rem; /* Expande para laterais */
+        margin-right: -5rem;
+        padding-left: 5rem;
+        padding-right: 5rem;
+        margin-bottom: 30px; 
         box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-        border: 1px solid rgba(255,255,255,0.1);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
     }
     .cover-title { 
-        font-size: 2.8em; 
+        font-size: 3em; 
         font-weight: 900; 
         margin: 0; 
         letter-spacing: -1px;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     .cover-subtitle { 
-        font-size: 1.2em; 
+        font-size: 1.3em; 
         font-weight: 300; 
         opacity: 0.95; 
-        margin-bottom: 20px; 
+        margin-bottom: 25px; 
         font-style: italic;
         border-bottom: 1px solid rgba(255,255,255,0.2);
-        padding-bottom: 10px;
+        padding-bottom: 15px;
         display: inline-block;
     }
     .data-grid {
         display: flex;
-        gap: 15px;
+        gap: 20px;
         flex-wrap: wrap;
         margin-top: 15px;
     }
     .info-tag { 
         background: rgba(255,255,255,0.15); 
-        padding: 8px 15px; 
-        border-radius: 8px; 
+        padding: 10px 20px; 
+        border-radius: 10px; 
         font-weight: 600; 
-        font-size: 0.95em; 
+        font-size: 1em; 
         backdrop-filter: blur(5px);
         border: 1px solid rgba(255,255,255,0.2);
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* PAINEL DE CONTROLE */
+    .control-panel {
+        background-color: white;
+        padding: 25px;
+        border-radius: 15px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
     }
 
     /* CARDS TÉCNICOS */
@@ -68,17 +84,8 @@ st.markdown("""
     .chem-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #c62828; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .bio-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #2e7d32; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     
-    /* MÉTRICAS COMPACTAS */
-    div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
     /* ALERTA */
-    .alert-box { padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; text-align: center; }
+    .alert-box { padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; text-align: center; font-size: 1.1em; }
     .high-risk { background-color: #ffebee; color: #b71c1c; border: 1px solid #ef5350; }
     .low-risk { background-color: #e8f5e9; color: #1b5e20; border: 1px solid #66bb6a; }
 
@@ -87,7 +94,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS AGRONÔMICO (ESTRUTURA APROVADA) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO (MANTIDO INTACTO) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
@@ -368,7 +375,7 @@ BANCO_MASTER = {
     }
 }
 
-# --- 3. MOTORES DE INTEGRAÇÃO (API) ---
+# --- 3. MOTORES DE CÁLCULO ---
 def get_coords(city, key):
     try:
         url = f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=1&appid={key}"
@@ -426,21 +433,30 @@ with st.sidebar:
     api_w = st.secrets.get("OPENWEATHER_KEY", st.text_input("OpenWeather Key:", type="password"))
     api_g = st.secrets.get("GEMINI_KEY", st.text_input("Gemini API Key:", type="password"))
     st.divider()
-    st.caption("Agro-Intel Enterprise v45.0")
+    st.caption("Agro-Intel Enterprise v46.0")
 
 # --- 5. LÓGICA DE INICIALIZAÇÃO ---
 if 'lat' not in st.session_state: st.session_state.lat = -13.2000
 if 'lon' not in st.session_state: st.session_state.lon = -41.4000
 
-# --- 6. PAINEL DE CONTROLE (AGORA NO TOPO) ---
+# ---------------------------------------------------------
+#  ESTRUTURA DA PÁGINA (CAPA NO TOPO -> INPUTS -> RESULTADOS)
+# ---------------------------------------------------------
+
+# 1. ESPAÇO RESERVADO PARA A CAPA (NO TOPO ABSOLUTO)
+header_placeholder = st.empty()
+
+# 2. PAINEL DE CONTROLE (ABAIXO DA CAPA)
 with st.container():
+    st.markdown("<div class='control-panel'>", unsafe_allow_html=True)
+    st.markdown("### ⚙️ Painel de Operação")
     c1, c2, c3 = st.columns(3)
     
     with c1:
         st.markdown("**📍 Localização da Propriedade**")
         tab_c, tab_g = st.tabs(["Cidade", "Coordenadas"])
         with tab_c:
-            cid = st.text_input("Buscar Cidade:", placeholder="Ex: Ibicoara, BA")
+            cid = st.text_input("Buscar Cidade:", placeholder="Ex: Mucugê, BA")
             if st.button("📍 Localizar") and api_w:
                 nlat, nlon = get_coords(cid, api_w)
                 if nlat: st.session_state.lat, st.session_state.lon = nlat, nlon; st.rerun()
@@ -458,8 +474,9 @@ with st.container():
     with c3:
         st.markdown("**📅 Planejamento**")
         dt_inicio = st.date_input("Data de Início/Plantio:", date(2025, 12, 1))
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# --- 7. PROCESSAMENTO E EXIBIÇÃO (HEADER + DASHBOARD) ---
+# 3. LÓGICA DE PROCESSAMENTO E PREENCHIMENTO
 if api_w:
     # Dados Seguros
     c_db = BANCO_MASTER[cultura]
@@ -473,31 +490,34 @@ if api_w:
         dias = (date.today() - dt_inicio).days
         gda_acum = dias * (df['GDA'].sum() / 5 * 8)
         
-        # --- CAPA DO APP (NO TOPO DE TUDO) ---
-        st.markdown(f"""
-        <div class="app-cover">
-            <h1 class="cover-title">Agro-Intel Enterprise</h1>
-            <div class="cover-subtitle">Sistema Avançado de Suporte à Decisão Agronômica</div>
-            <div class="data-grid">
-                <div class="info-tag">🌱 {cultura}</div>
-                <div class="info-tag">🧬 {variedade}</div>
-                <div class="info-tag">📅 {dias} dias de campo</div>
-                <div class="info-tag">🔥 {gda_acum:.0f} GDA Acumulado</div>
+        # --- AQUI ESTÁ A MÁGICA: PREENCHE A CAPA NO TOPO AGORA ---
+        with header_placeholder.container():
+            st.markdown(f"""
+            <div class="app-cover">
+                <h1 class="cover-title">Agro-Intel Enterprise</h1>
+                <div class="cover-subtitle">Sistema Avançado de Suporte à Decisão Agronômica</div>
+                <div class="data-grid">
+                    <div class="info-tag">🌱 {cultura}</div>
+                    <div class="info-tag">🧬 {variedade}</div>
+                    <div class="info-tag">📅 {dias} dias de campo</div>
+                    <div class="info-tag">🔥 {gda_acum:.0f} GDA Acumulado</div>
+                </div>
+                <div style="margin-top: 20px; font-size: 0.95em; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px;">
+                    ℹ️ <b>Perfil Genético:</b> {v_db['info']}
+                </div>
             </div>
-            <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
-                ℹ️ <b>Perfil Genético:</b> {v_db['info']}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         
-        # --- MÉTRICAS COMPACTAS (ICONES) ---
+        # --- RESULTADOS ABAIXO DO PAINEL DE CONTROLE ---
+        
+        # Métricas Compactas
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("🌡️ Temperatura", f"{hoje['Temp']:.1f}°C")
         m2.metric("💧 Umidade", f"{hoje['Umid']}%")
         m3.metric("🌧️ Chuva (3h)", f"{hoje['Chuva']} mm")
         m4.metric("💦 Demanda ETc", f"{hoje['ETc']} mm")
 
-        # --- ABAS DE ANÁLISE ---
+        # Abas de Análise
         tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Água", "📡 Radar", "👁️ IA Vision", "🗺️ Mapa", "🚚 Logística"])
 
         # ABA 1: CONSULTORIA TÉCNICA
@@ -613,4 +633,12 @@ if api_w:
                 st.metric("Custo/Kg", f"R$ {tot/p:.2f}")
 
 else:
-    st.info("👈 Configure a API OpenWeather na barra lateral.")
+    # Caso não tenha chave, preenche o placeholder com capa genérica
+    with header_placeholder.container():
+        st.markdown(f"""
+        <div class="app-cover">
+            <h1 class="cover-title">Agro-Intel Enterprise</h1>
+            <div class="cover-subtitle">Sistema Avançado de Suporte à Decisão Agronômica</div>
+            <div style="margin-top:20px;">👈 Insira suas chaves de API para iniciar o monitoramento.</div>
+        </div>
+        """, unsafe_allow_html=True)
