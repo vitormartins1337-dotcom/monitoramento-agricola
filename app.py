@@ -279,4 +279,123 @@ if api_w:
     df = get_forecast(st.session_state.lat, st.session_state.lon, api_w, v_db['kc'], c_db['t_base'])
     
     if not df.empty:
-        hoje = df.
+        hoje = df.iloc[0]
+        dias = (date.today() - dt_inicio).days
+        gda_acum = dias * (df['GDA'].sum() / 5 * 8)
+        
+        # --- CABEÇALHO DE INFORMAÇÕES VITAIS ---
+        st.info(f"**Cultura Selecionada:** {cultura} | **Variedade:** {variedade} ({v_db['info']}) | **Idade:** {dias} dias | **Fase:** {fase}")
+        
+        # --- METRICAS PRINCIPAIS (EM PRIMEIRO LUGAR) ---
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("🌡️ Temperatura", f"{hoje['Temp']:.1f}°C")
+        m2.metric("💧 Umidade", f"{hoje['Umid']}%")
+        m3.metric("🌧️ Chuva (3h)", f"{hoje['Chuva']} mm")
+        m4.metric("💦 Demanda ETc", f"{hoje['ETc']} mm")
+
+        # --- ABAS DE ANÁLISE ---
+        tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Balanço", "📡 Radar", "👁️ IA Vision", "🗺️ Mapa", "🚚 Logística"])
+
+        # ABA 1: CONSULTORIA PROFISSIONAL
+        with tabs[0]:
+            st.markdown(f"### 🔥 Progresso Térmico: {gda_acum:.0f} / {v_db['gda_meta']} GDA")
+            st.progress(min(1.0, gda_acum/v_db['gda_meta']))
+            
+            # Matriz de Decisão
+            if hoje['Umid'] > 85:
+                st.markdown(f"<div class='alert-high'>🚨 ALERTA CRÍTICO: Umidade > 85%. Condição ideal para fungos e bactérias. Necessário intervenção curativa/sistêmica.</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div class='alert-low'>✅ CONDIÇÃO SEGURA: Baixo risco de infecção. Manter cronograma preventivo.</div>", unsafe_allow_html=True)
+            
+            
+
+            col_esq, col_dir = st.columns(2)
+            with col_esq:
+                st.markdown(f"""
+                <div class="tech-card">
+                    <h4>🧬 Fisiologia da Fase</h4>
+                    <p>{f_db['fisio']}</p>
+                    <p class="justification">Entender a fisiologia ajuda a evitar estresses desnecessários.</p>
+                    <hr>
+                    <h4>⚠️ Riscos Fitossanitários</h4>
+                    <p>{f_db['riscos']}</p>
+                </div>
+                <div class="bio-card">
+                    <h4>🌿 Manejo Biológico</h4>
+                    <p>{f_db['bio']}</p>
+                    <p class="justification">Foco na regeneração do solo e resistência induzida.</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_dir:
+                st.markdown(f"""
+                <div class="tech-card">
+                    <h4>🚜 Ações de Manejo</h4>
+                    <p>{f_db['desc']}</p>
+                    <p><b>Ação Prática:</b> {f_db['manejo']}</p>
+                </div>
+                <div class="chem-card">
+                    <h4>🧪 Prescrição Química Sugerida</h4>
+                    <p>{f_db['quim']}</p>
+                    <p class="justification">Produtos selecionados baseados no estágio fenológico e pressão de doença.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # ABA 2: CLIMA
+        with tabs[1]:
+            st.markdown("### 📊 Gráfico de Precipitação e Demanda Hídrica")
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=df['Data'], y=df['Chuva'], name='Chuva (mm)', marker_color='#2196f3'))
+            fig.add_trace(go.Scatter(x=df['Data'], y=df['ETc'], name='Consumo ETc (mm)', line=dict(color='#d32f2f', width=3)))
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(df, use_container_width=True)
+
+        # ABA 3: RADAR
+        with tabs[2]:
+            st.markdown("### 📡 Monitoramento de Vizinhança (15km)")
+            r_df = get_radar(st.session_state.lat, st.session_state.lon, api_w)
+            if not r_df.empty:
+                cols = st.columns(4)
+                for i, r in r_df.iterrows():
+                    bg = "#ffebee" if r['Chuva'] == "SIM" else "#e8f5e9"
+                    with cols[i]:
+                        st.markdown(f"""
+                        <div style="background:{bg}; padding:15px; border-radius:10px; text-align:center; border:1px solid #ccc">
+                            <b>{r['Loc']}</b><br>
+                            <h2>{r['T']:.1f}°C</h2>
+                            Chuva: {r['Chuva']}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+        # ABA 4: IA
+        with tabs[3]:
+            if api_g:
+                foto = st.camera_input("Scanner de Patógenos")
+                if foto:
+                    genai.configure(api_key=api_g)
+                    res = genai.GenerativeModel('gemini-1.5-flash').generate_content([f"Agrônomo Expert. Analise {cultura} {variedade}. Sintomas e Solução.", Image.open(foto)])
+                    st.success("Laudo Gerado:")
+                    st.write(res.text)
+            else: st.warning("Insira a chave Gemini na Sidebar.")
+
+        # ABA 5: MAPA
+        with tabs[4]:
+            m = folium.Map([st.session_state.lat, st.session_state.lon], zoom_start=15)
+            folium.TileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri', name='Satélite').add_to(m)
+            st_folium(m, width="100%", height=500)
+            
+        # ABA 6: LOGISTICA
+        with tabs[5]:
+            c1, c2 = st.columns(2)
+            with c1:
+                d = st.number_input("Distância (km)", value=450)
+                cons = st.number_input("Km/L", value=10.0)
+                pr = st.number_input("Preço Comb.", value=6.20)
+                p = st.slider("Carga (kg)", 100, 800, 400)
+            with c2:
+                tot = (d/cons)*pr
+                st.metric("Custo Viagem", f"R$ {tot:.2f}")
+                st.metric("Custo/Kg", f"R$ {tot/p:.2f}")
+
+else:
+    st.info("👈 Configure a API OpenWeather na barra lateral.")
