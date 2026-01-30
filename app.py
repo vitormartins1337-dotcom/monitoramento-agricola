@@ -17,32 +17,77 @@ st.markdown("""
 <style>
     .main { background-color: #f4f6f9; }
     
-    /* Capa do App (Header Superior) */
+    /* CAPA DO APP (HEADER) - ESTILO PREMIUM */
     .app-cover { 
-        background: linear-gradient(135deg, #1b5e20 0%, #004d40 100%); 
-        padding: 25px; 
-        border-radius: 0px 0px 15px 15px; 
+        background: linear-gradient(135deg, #0d47a1 0%, #1b5e20 100%); 
+        padding: 30px; 
+        border-radius: 15px; 
         color: white; 
-        margin-top: -50px; /* Puxa para o topo extremo */
-        margin-bottom: 20px; 
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        margin-bottom: 25px; 
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.1);
     }
-    .cover-title { font-size: 2.2em; font-weight: 800; margin: 0; }
-    .cover-subtitle { font-size: 1.1em; opacity: 0.9; margin-top: 5px; display: flex; gap: 15px; flex-wrap: wrap; }
-    .info-tag { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 5px; font-weight: 600; font-size: 0.9em; border: 1px solid rgba(255,255,255,0.3); }
+    .cover-title { 
+        font-size: 2.8em; 
+        font-weight: 900; 
+        margin: 0; 
+        letter-spacing: -1px;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .cover-subtitle { 
+        font-size: 1.2em; 
+        font-weight: 300; 
+        opacity: 0.95; 
+        margin-bottom: 20px; 
+        font-style: italic;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        padding-bottom: 10px;
+        display: inline-block;
+    }
+    .data-grid {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin-top: 15px;
+    }
+    .info-tag { 
+        background: rgba(255,255,255,0.15); 
+        padding: 8px 15px; 
+        border-radius: 8px; 
+        font-weight: 600; 
+        font-size: 0.95em; 
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
 
-    /* Cards de Informação */
-    .tech-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #1565c0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
-    .chem-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #c62828; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
-    .bio-card { background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #2e7d32; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
+    /* CARDS TÉCNICOS */
+    .tech-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #1565c0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .chem-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #c62828; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .bio-card { background: white; padding: 25px; border-radius: 12px; border-left: 6px solid #2e7d32; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
     
-    /* Estilos de Risco */
-    .alert-high { background-color: #ffebee; border: 1px solid #ef5350; color: #b71c1c; padding: 15px; border-radius: 8px; font-weight: bold; }
-    .alert-low { background-color: #e8f5e9; border: 1px solid #66bb6a; color: #1b5e20; padding: 15px; border-radius: 8px; font-weight: bold; }
+    /* MÉTRICAS COMPACTAS */
+    div[data-testid="stMetric"] {
+        background-color: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    /* ALERTA */
+    .alert-box { padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 15px; text-align: center; }
+    .high-risk { background-color: #ffebee; color: #b71c1c; border: 1px solid #ef5350; }
+    .low-risk { background-color: #e8f5e9; color: #1b5e20; border: 1px solid #66bb6a; }
+
+    /* TEXTOS DE APOIO */
+    .agro-explanation { font-size: 0.85em; color: #616161; margin-top: 5px; font-style: italic; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. BANCO DE DADOS AGRONÔMICO (COMPLETO E CORRIGIDO) ---
+# --- 2. BANCO DE DADOS AGRONÔMICO (ESTRUTURA APROVADA) ---
 BANCO_MASTER = {
     "Batata (Solanum tuberosum)": {
         "t_base": 7,
@@ -381,23 +426,22 @@ with st.sidebar:
     api_w = st.secrets.get("OPENWEATHER_KEY", st.text_input("OpenWeather Key:", type="password"))
     api_g = st.secrets.get("GEMINI_KEY", st.text_input("Gemini API Key:", type="password"))
     st.divider()
-    st.caption("Agro-Intel Enterprise v44.0")
+    st.caption("Agro-Intel Enterprise v45.0")
 
 # --- 5. LÓGICA DE INICIALIZAÇÃO ---
 if 'lat' not in st.session_state: st.session_state.lat = -13.2000
 if 'lon' not in st.session_state: st.session_state.lon = -41.4000
 
-# Container de Configuração (Abaixo da Capa, mas definido antes)
+# --- 6. PAINEL DE CONTROLE (AGORA NO TOPO) ---
 with st.container():
-    # Definição das variáveis de controle
     c1, c2, c3 = st.columns(3)
     
     with c1:
-        st.markdown("**📍 Localização**")
+        st.markdown("**📍 Localização da Propriedade**")
         tab_c, tab_g = st.tabs(["Cidade", "Coordenadas"])
         with tab_c:
-            cid = st.text_input("Cidade:", placeholder="Ex: Ibicoara, BA")
-            if st.button("📍 Buscar") and api_w:
+            cid = st.text_input("Buscar Cidade:", placeholder="Ex: Ibicoara, BA")
+            if st.button("📍 Localizar") and api_w:
                 nlat, nlon = get_coords(cid, api_w)
                 if nlat: st.session_state.lat, st.session_state.lon = nlat, nlon; st.rerun()
         with tab_g:
@@ -406,16 +450,16 @@ with st.container():
             st.session_state.lon = cl_b.number_input("Lon:", value=st.session_state.lon, format="%.4f")
             
     with c2:
-        st.markdown("**🌱 Cultura**")
-        cultura = st.selectbox("Cultura:", list(BANCO_MASTER.keys()))
-        variedade = st.selectbox("Variedade:", list(BANCO_MASTER[cultura]['vars'].keys()))
-        fase = st.selectbox("Fase Atual:", list(BANCO_MASTER[cultura]['fases'].keys()))
+        st.markdown("**🌱 Configuração da Cultura**")
+        cultura = st.selectbox("Selecione a Cultura:", list(BANCO_MASTER.keys()))
+        variedade = st.selectbox("Variedade/Genética:", list(BANCO_MASTER[cultura]['vars'].keys()))
+        fase = st.selectbox("Estágio Fenológico Atual:", list(BANCO_MASTER[cultura]['fases'].keys()))
         
     with c3:
-        st.markdown("**📅 Calendário**")
-        dt_inicio = st.date_input("Data de Plantio:", date(2025, 12, 1))
+        st.markdown("**📅 Planejamento**")
+        dt_inicio = st.date_input("Data de Início/Plantio:", date(2025, 12, 1))
 
-# --- 6. PROCESSAMENTO E EXIBIÇÃO ---
+# --- 7. PROCESSAMENTO E EXIBIÇÃO (HEADER + DASHBOARD) ---
 if api_w:
     # Dados Seguros
     c_db = BANCO_MASTER[cultura]
@@ -429,23 +473,24 @@ if api_w:
         dias = (date.today() - dt_inicio).days
         gda_acum = dias * (df['GDA'].sum() / 5 * 8)
         
-        # --- CAPA DO APP (HEADER) - POSICIONADA NO TOPO VIA CSS E MARKDOWN ---
+        # --- CAPA DO APP (NO TOPO DE TUDO) ---
         st.markdown(f"""
         <div class="app-cover">
-            <h1 class="cover-title">Agro-Intel</h1>
-            <div class="cover-subtitle">
-                <span class="info-tag">🌱 {cultura}</span>
-                <span class="info-tag">🧬 {variedade}</span>
-                <span class="info-tag">📅 {dias} dias</span>
-                <span class="info-tag">🔥 GDA: {gda_acum:.0f}</span>
+            <h1 class="cover-title">Agro-Intel Enterprise</h1>
+            <div class="cover-subtitle">Sistema Avançado de Suporte à Decisão Agronômica</div>
+            <div class="data-grid">
+                <div class="info-tag">🌱 {cultura}</div>
+                <div class="info-tag">🧬 {variedade}</div>
+                <div class="info-tag">📅 {dias} dias de campo</div>
+                <div class="info-tag">🔥 {gda_acum:.0f} GDA Acumulado</div>
             </div>
-            <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
-                {v_db['info']}
+            <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.9; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 10px;">
+                ℹ️ <b>Perfil Genético:</b> {v_db['info']}
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # --- MÉTRICAS DE CLIMA ---
+        # --- MÉTRICAS COMPACTAS (ICONES) ---
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("🌡️ Temperatura", f"{hoje['Temp']:.1f}°C")
         m2.metric("💧 Umidade", f"{hoje['Umid']}%")
@@ -453,7 +498,7 @@ if api_w:
         m4.metric("💦 Demanda ETc", f"{hoje['ETc']} mm")
 
         # --- ABAS DE ANÁLISE ---
-        tabs = st.tabs(["🎓 Consultoria Profissional", "📊 Clima & Balanço", "📡 Radar", "👁️ IA Vision", "🗺️ Mapa", "🚚 Logística"])
+        tabs = st.tabs(["🎓 Consultoria Técnica", "📊 Clima & Água", "📡 Radar", "👁️ IA Vision", "🗺️ Mapa", "🚚 Logística"])
 
         # ABA 1: CONSULTORIA TÉCNICA
         with tabs[0]:
@@ -464,15 +509,15 @@ if api_w:
             
             # Alerta de Risco com Lógica
             if hoje['Umid'] > 85:
-                st.markdown(f"<div class='alert-high'>🚨 ALERTA CRÍTICO: Umidade > 85%. Alto risco de doenças fúngicas/bacterianas.</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='alert-box high-risk'>🚨 ALERTA CRÍTICO: Umidade > 85%. Condição favorável para doenças fúngicas severas.</div>", unsafe_allow_html=True)
             else:
-                st.markdown(f"<div class='alert-low'>✅ CONDIÇÃO SEGURA: Baixo risco de infecção.</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='alert-box low-risk'>✅ CONDIÇÃO SEGURA: Baixo risco de infecção no momento.</div>", unsafe_allow_html=True)
             
             
 
             col_esq, col_dir = st.columns(2)
             with col_esq:
-                # Uso de .get() para segurança total contra KeyError
+                # Uso de .get() para segurança
                 riscos_txt = f_db.get('riscos', 'Monitoramento Padrão')
                 fisio_txt = f_db.get('fisio', 'Crescimento normal.')
                 bio_txt = f_db.get('bio', 'Manter equilíbrio de solo.')
@@ -481,6 +526,7 @@ if api_w:
                 <div class="tech-card">
                     <h4>🧬 Fisiologia da Planta</h4>
                     <p>{fisio_txt}</p>
+                    <p class="agro-explanation">Entender o processo interno da planta é vital para não aplicar produtos no momento errado.</p>
                     <hr>
                     <h4>⚠️ Principais Riscos</h4>
                     <p>{riscos_txt}</p>
@@ -488,6 +534,7 @@ if api_w:
                 <div class="bio-card">
                     <h4>🌿 Controle Biológico</h4>
                     <p>{bio_txt}</p>
+                    <p class="agro-explanation">Estratégias para reduzir resistência de pragas.</p>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -499,12 +546,13 @@ if api_w:
                 st.markdown(f"""
                 <div class="tech-card">
                     <h4>🚜 Ações Culturais</h4>
-                    <p><b>Status:</b> {desc_txt}</p>
-                    <p><b>Manejo:</b> {manejo_txt}</p>
+                    <p><b>Fase:</b> {desc_txt}</p>
+                    <p><b>Prática Recomendada:</b> {manejo_txt}</p>
                 </div>
                 <div class="chem-card">
-                    <h4>🧪 Controle Químico</h4>
+                    <h4>🧪 Controle Químico Profissional</h4>
                     <p>{quim_txt}</p>
+                    <p class="agro-explanation">Princípios ativos sugeridos com base no alvo biológico.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
